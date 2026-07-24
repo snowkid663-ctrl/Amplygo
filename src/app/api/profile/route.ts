@@ -24,7 +24,7 @@ export async function PATCH(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const user = getUserById(session.user.id);
+  const user = await getUserById(session.user.id);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   // ---- Password change (handled on its own; verifies the current password) ----
@@ -38,17 +38,17 @@ export async function PATCH(req: Request) {
     if (newPassword.length < 8) {
       return NextResponse.json({ error: "New password must be at least 8 characters" }, { status: 400 });
     }
-    updateUserPassword(user.id, await bcrypt.hash(newPassword, 10));
+    await updateUserPassword(user.id, await bcrypt.hash(newPassword, 10));
     return NextResponse.json({ ok: true });
   }
 
   // ---- Profile update (fields depend on the role) ----
   if (user.role === "COMPANY") {
-    const company = getCompanyByUserId(user.id);
+    const company = await getCompanyByUserId(user.id);
     if (!company) return NextResponse.json({ error: "Company not found" }, { status: 404 });
     const companyName = String(body.companyName ?? "").trim();
     if (!companyName) return NextResponse.json({ error: "Company name is required" }, { status: 400 });
-    updateCompanyProfile(company.id, {
+    await updateCompanyProfile(company.id, {
       companyName,
       website: String(body.website ?? "").trim() || null,
       about: String(body.about ?? "").trim() || null,
@@ -58,23 +58,23 @@ export async function PATCH(req: Request) {
   }
 
   if (user.role === "CREATOR") {
-    const creator = getCreatorByUserId(user.id);
+    const creator = await getCreatorByUserId(user.id);
     if (!creator) return NextResponse.json({ error: "Creator not found" }, { status: 404 });
     const displayName = String(body.displayName ?? "").trim();
     if (!displayName) return NextResponse.json({ error: "Display name is required" }, { status: 400 });
-    updateCreatorProfile(creator.id, {
+    await updateCreatorProfile(creator.id, {
       displayName,
       bio: String(body.bio ?? "").trim() || null,
       displayCurrency: normalizeCurrency(body.displayCurrency, creator.displayCurrency),
     });
     // Keep the user's name in sync with the public display name.
-    updateUserName(user.id, displayName);
+    await updateUserName(user.id, displayName);
     return NextResponse.json({ ok: true });
   }
 
   // ADMIN — only has a name on the user record.
   const name = String(body.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-  updateUserName(user.id, name);
+  await updateUserName(user.id, name);
   return NextResponse.json({ ok: true });
 }

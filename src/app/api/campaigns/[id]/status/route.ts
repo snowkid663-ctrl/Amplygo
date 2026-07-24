@@ -15,8 +15,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session?.user || session.user.role !== "COMPANY") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const company = getCompanyByUserId(session.user.id);
-  const campaign = getCampaignById(params.id);
+  const company = await getCompanyByUserId(session.user.id);
+  const campaign = await getCampaignById(params.id);
   if (!company || !campaign || campaign.companyId !== company.id) {
     return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
   }
@@ -29,6 +29,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: "Your company must be approved before activating campaigns." }, { status: 403 });
   }
 
-  setCampaignStatus(campaign.id, status);
+  await setCampaignStatus(campaign.id, status);
   return NextResponse.json({ ok: true });
 }

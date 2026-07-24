@@ -21,8 +21,8 @@ export default async function CreatorSettingsPage({
   searchParams: { connected?: string; connect_error?: string };
 }) {
   const session = await requireRole("CREATOR");
-  const creator = getCreatorByUserId(session.user.id)!;
-  const accounts = listSocialAccounts(creator.id);
+  const creator = (await getCreatorByUserId(session.user.id))!;
+  const accounts = await listSocialAccounts(creator.id);
   const status = connectStatus();
 
   const connected = searchParams.connected;

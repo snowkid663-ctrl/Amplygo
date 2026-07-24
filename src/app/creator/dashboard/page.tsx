@@ -13,6 +13,8 @@ import {
 import { formatCents, formatConverted } from "@/lib/money";
 import { submissionStatusTone, formatNumber } from "@/lib/format";
 import CreatorNav from "@/components/CreatorNav";
+import CountUp from "@/components/CountUp";
+import Sparkline from "@/components/Sparkline";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -20,15 +22,24 @@ import EmptyState from "@/components/ui/EmptyState";
 
 export default async function CreatorDashboard() {
   const session = await requireRole("CREATOR");
-  const creator = getCreatorByUserId(session.user.id)!;
+  const creator = (await getCreatorByUserId(session.user.id))!;
   const cur = creator.displayCurrency;
-  const accounts = listSocialAccounts(creator.id);
-  const participations = listParticipationsByCreator(creator.id);
-  const submissions = listSubmissionsByCreator(creator.id);
+  const [accounts, participations, submissions] = await Promise.all([
+    listSocialAccounts(creator.id),
+    listParticipationsByCreator(creator.id),
+    listSubmissionsByCreator(creator.id),
+  ]);
 
-  const activeCampaigns = participations
-    .map((p) => getCampaignById(p.campaignId))
-    .filter((c) => c && c.status === "ACTIVE");
+  const resolved = await Promise.all(participations.map((p) => getCampaignById(p.campaignId)));
+  const activeCampaigns = await Promise.all(
+    resolved
+      .filter((c): c is NonNullable<typeof c> => !!c && c.status === "ACTIVE")
+      .map(async (c) => ({ ...c, companyCurrency: (await getCompanyById(c.companyId))?.currency ?? "USD" }))
+  );
+  const [avail, earned] = await Promise.all([
+    availableBalance(creator.id, cur),
+    totalApprovedEarnings(creator.id, cur),
+  ]);
   const pendingCount = submissions.filter((s) => s.status === "PENDING").length;
   const totalViews = submissions.reduce((sum, s) => sum + (s.viewsCount ?? 0), 0);
 
@@ -53,24 +64,28 @@ export default async function CreatorDashboard() {
           </Card>
         )}
 
-        <div className="fu" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
-          <Card style={{ padding: 18 }}>
+        <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
+          <Card className="lift spot-card fu fu-1" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Available balance</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}>{formatCents(availableBalance(creator.id, cur), cur)}</div>
+            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={avail} currency={cur} /></div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="cr-balance" /></div>
           </Card>
-          <Card style={{ padding: 18 }}>
+          <Card className="lift spot-card fu fu-2" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Total earned</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}>{formatCents(totalApprovedEarnings(creator.id, cur), cur)}</div>
+            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={earned} currency={cur} /></div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="cr-earned" /></div>
           </Card>
-          <Card style={{ padding: 18 }}>
+          <Card className="lift spot-card fu fu-3" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Total views</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}>{formatNumber(totalViews)}</div>
+            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={totalViews} /></div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="cr-views" /></div>
           </Card>
-          <Card style={{ padding: 18 }}>
+          <Card className="lift spot-card fu fu-4" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Awaiting review</div>
             <div className="tabular" style={{ fontSize: 22, fontWeight: 700, color: pendingCount ? "var(--amber)" : "white" }}>
-              {pendingCount}
+              <CountUp to={pendingCount} />
             </div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="cr-pending" up={false} /></div>
           </Card>
         </div>
 
@@ -98,7 +113,7 @@ export default async function CreatorDashboard() {
                 >
                   <div style={{ fontSize: 14, fontWeight: 500 }}>{c!.name}</div>
                   <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{c!.brand}</div>
-                  <div style={{ fontSize: 13 }}>{formatConverted(c!.cpmCents, getCompanyById(c!.companyId)!.currency, cur)} CPM</div>
+                  <div style={{ fontSize: 13 }}>{formatConverted(c!.cpmCents, c!.companyCurrency, cur)} CPM</div>
                   <div>
                     {submission ? (
                       <Badge tone={submissionStatusTone(submission.status)}>{submission.status}</Badge>

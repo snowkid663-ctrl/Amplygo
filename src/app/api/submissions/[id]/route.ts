@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const submission = getSubmissionById(params.id);
+  const submission = await getSubmissionById(params.id);
   if (!submission) return NextResponse.json({ error: "Submission not found" }, { status: 404 });
   if (submission.status !== "PENDING" && submission.status !== "FLAGGED") {
     return NextResponse.json({ error: "This submission has already been reviewed." }, { status: 400 });
@@ -25,11 +25,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!viewsCount || viewsCount < 0) {
       return NextResponse.json({ error: "Enter a valid view count to approve." }, { status: 400 });
     }
-    const updated = approveSubmission(submission.id, Math.round(viewsCount), note);
+    const updated = await approveSubmission(submission.id, Math.round(viewsCount), note);
     return NextResponse.json({ submission: updated });
   }
   if (action === "reject") {
-    const updated = rejectSubmission(submission.id, note);
+    const updated = await rejectSubmission(submission.id, note);
     return NextResponse.json({ submission: updated });
   }
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });

@@ -13,9 +13,20 @@ import EmptyState from "@/components/ui/EmptyState";
 
 export default async function MyCampaignsPage() {
   const session = await requireRole("CREATOR");
-  const creator = getCreatorByUserId(session.user.id)!;
+  const creator = (await getCreatorByUserId(session.user.id))!;
   const cur = creator.displayCurrency;
-  const participations = listParticipationsByCreator(creator.id);
+  const participations = await listParticipationsByCreator(creator.id);
+  const rows = (
+    await Promise.all(
+      participations.map(async (p) => {
+        const campaign = await getCampaignById(p.campaignId);
+        if (!campaign) return null;
+        const companyCur = (await getCompanyById(campaign.companyId))?.currency ?? "USD";
+        const submission = await getSubmissionByParticipation(p.id);
+        return { p, campaign, companyCur, submission };
+      })
+    )
+  ).filter((r): r is NonNullable<typeof r> => r !== null);
 
   return (
     <CreatorNav title="My campaigns">
@@ -36,11 +47,7 @@ export default async function MyCampaignsPage() {
               <div>Earned</div>
               <div>Status</div>
             </div>
-            {participations.map((p) => {
-              const campaign = getCampaignById(p.campaignId);
-              if (!campaign) return null;
-              const companyCur = getCompanyById(campaign.companyId)?.currency ?? "USD";
-              const submission = getSubmissionByParticipation(p.id);
+            {rows.map(({ p, campaign, companyCur, submission }) => {
               return (
                 <Link
                   key={p.id}

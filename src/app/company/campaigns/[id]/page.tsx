@@ -21,6 +21,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import MiniAreaChart from "@/components/MiniAreaChart";
 import ConversionFunnel from "@/components/ConversionFunnel";
 import CampaignTabs from "@/components/CampaignTabs";
+import CountUp from "@/components/CountUp";
 
 const VIDEO_TITLES = ["Unboxing done right", "Why I switched", "3 tips nobody tells you", "The honest review", "POV: you found it"];
 
@@ -38,18 +39,26 @@ function Panel({ title, right, children }: { title: string; right?: React.ReactN
 
 export default async function CompanyCampaignDetail({ params }: { params: { id: string } }) {
   const session = await requireRole("COMPANY");
-  const company = getCompanyByUserId(session.user.id)!;
-  const campaign = getCampaignById(params.id);
+  const company = (await getCompanyByUserId(session.user.id))!;
+  const campaign = await getCampaignById(params.id);
   if (!campaign || campaign.companyId !== company.id) notFound();
 
   const cur = company.currency;
-  const participations = listParticipationsByCampaign(campaign.id);
-  const submissions = listSubmissionsByCampaign(campaign.id);
+  const [participations, submissions] = await Promise.all([
+    listParticipationsByCampaign(campaign.id),
+    listSubmissionsByCampaign(campaign.id),
+  ]);
   const submissionByParticipation = new Map(submissions.map((s) => [s.participationId, s]));
   const rulesChecklist: string[] = JSON.parse(campaign.rulesChecklist || "[]");
   const pct = campaign.budgetCents > 0 ? Math.min(100, (campaign.spentCents / campaign.budgetCents) * 100) : 0;
 
-  const nameOf = (id: string) => getCreatorById(id)?.displayName ?? "Unknown creator";
+  // Resolve every involved creator's name once, then look up synchronously.
+  const creatorIds = Array.from(new Set([...participations, ...submissions].map((r) => r.creatorId)));
+  const creatorEntries = await Promise.all(
+    creatorIds.map(async (id) => [id, (await getCreatorById(id))?.displayName ?? "Unknown creator"] as const)
+  );
+  const creatorNames = new Map(creatorEntries);
+  const nameOf = (id: string) => creatorNames.get(id) ?? "Unknown creator";
   const m = campaignMetrics(campaign, submissions, nameOf, cur);
   const money = (c: number) => formatCents(c, cur);
   const aov = convertCents(4900, "USD", cur);
@@ -80,7 +89,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
     { label: "Budget 100%", date: spentPctReal >= 100 ? "reached" : "~soon", done: spentPctReal >= 100 },
   ];
 
-  const kpi = (label: string, value: string, delta: number, sub?: string) => (
+  const kpi = (label: string, value: React.ReactNode, delta: number, sub?: string) => (
     <div>
       <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{label}</div>
       <div className="tabular" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>{value}</div>
@@ -174,19 +183,23 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
               {campaign.endDate ? `Ends ${formatDate(campaign.endDate)}` : "No end date"}
             </span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 20 }}>
-            {kpi("Revenue", money(m.revenueCents), m.deltas.revenue)}
+          <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 20 }}>
+            {kpi("Revenue", <CountUp to={m.revenueCents} currency={cur} />, m.deltas.revenue)}
             <div>
               <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>Profit</div>
-              <div className="tabular kpi-up" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>+{money(m.profitCents)}</div>
+              <div className="tabular kpi-up" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>
+                +<CountUp to={m.profitCents} currency={cur} />
+              </div>
               <div className="kpi-up" style={{ fontSize: 12, marginTop: 4 }}>▲ {m.deltas.profit}% vs last week</div>
             </div>
             <div>
               <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>ROI</div>
-              <div className="tabular" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>{m.roi.toFixed(1)}x</div>
+              <div className="tabular" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>
+                <CountUp to={m.roi} decimals={1} suffix="x" />
+              </div>
               <div style={{ fontSize: 12, marginTop: 4, color: "var(--text-dim)" }}>Target: 2.5x</div>
             </div>
-            {kpi("Sales", formatNumber(m.sales), m.deltas.sales)}
+            {kpi("Sales", <CountUp to={m.sales} />, m.deltas.sales)}
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>
@@ -203,7 +216,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
         </Card>
 
         {/* Chart + funnel */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
+        <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
           <Panel title="Revenue over time" right={<Badge tone="neutral" small>30D</Badge>}>
             <div style={{ padding: "18px 8px 8px" }}>
               <MiniAreaChart data={m.series} height={220} />
@@ -227,7 +240,8 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
               <EmptyState title="No creators yet" subtitle="Once creators join and submit, they'll rank here." />
             </div>
           ) : (
-            <>
+            <div className="x-scroll">
+              <div style={{ minWidth: 860 }}>
               <div className="table-grid table-head" style={{ gridTemplateColumns: "1.8fr .7fr 1fr 1fr .7fr 1.1fr .8fr 1.1fr .7fr" }}>
                 <div>Creator</div>
                 <div>Videos</div>
@@ -260,12 +274,13 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
                   </div>
                 </div>
               ))}
-            </>
+              </div>
+            </div>
           )}
         </Panel>
 
         {/* Top videos + latest sales */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
+        <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 20 }}>
           <Panel title="Top performing videos">
             {topVideos.length === 0 ? (
               <div style={{ padding: 20 }}>
@@ -307,7 +322,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
 
         {/* Timeline */}
         <Panel title="Campaign timeline">
-          <div style={{ padding: "24px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "28px 12px" }}>
+          <div className="resp-2" style={{ padding: "24px 20px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "28px 12px" }}>
             {milestones.map((ms) => (
               <div key={ms.label} style={{ textAlign: "center" }}>
                 <div className={`milestone-dot ${ms.done ? "milestone-done" : "milestone-pending"}`}>{ms.done ? "✓" : "○"}</div>

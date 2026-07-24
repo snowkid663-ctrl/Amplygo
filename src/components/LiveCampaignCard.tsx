@@ -13,7 +13,7 @@ const bars: { platform: Platform; label: string; pct: number }[] = [
 /** The "living" campaign dashboard shown in the hero — animated counters + bars. */
 export default function LiveCampaignCard() {
   return (
-    <div className="live-card glass-strong glass-hi">
+    <div className="live-card glass-strong glass-hi grad-border">
       {/* header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
         <div>

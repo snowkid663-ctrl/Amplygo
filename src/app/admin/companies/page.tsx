@@ -8,30 +8,35 @@ import Badge from "@/components/ui/Badge";
 import PillFilterLinks from "@/components/ui/PillFilterLinks";
 import EmptyState from "@/components/ui/EmptyState";
 import CompanyActions from "@/components/CompanyActions";
+import TableSearch from "@/components/TableSearch";
 import type { CompanyStatus } from "@/lib/types";
 
 export default async function AdminCompaniesPage({ searchParams }: { searchParams: { status?: string } }) {
   await requireRole("ADMIN");
   const filter = (searchParams.status ?? "PENDING") as CompanyStatus | "all";
-  const all = listCompanies();
+  const all = await listCompanies();
   const companies = filter === "all" ? all : all.filter((c) => c.status === filter);
 
   return (
     <AdminNav title="Companies">
       <div className="page-pad">
-        <PillFilterLinks
-          basePath="/admin/companies"
-          paramName="status"
-          current={filter}
-          options={[
-            { value: "all", label: "All" },
-            { value: "PENDING", label: "Pending" },
-            { value: "APPROVED", label: "Approved" },
-            { value: "SUSPENDED", label: "Suspended" },
-            { value: "REJECTED", label: "Rejected" },
-          ]}
-        />
-
+        <TableSearch
+          placeholder="Search companies"
+          right={
+            <PillFilterLinks
+              basePath="/admin/companies"
+              paramName="status"
+              current={filter}
+              options={[
+                { value: "all", label: "All" },
+                { value: "PENDING", label: "Pending" },
+                { value: "APPROVED", label: "Approved" },
+                { value: "SUSPENDED", label: "Suspended" },
+                { value: "REJECTED", label: "Rejected" },
+              ]}
+            />
+          }
+        >
         <Card style={{ overflow: "hidden" }}>
           {companies.length === 0 ? (
             <div style={{ padding: 20 }}>
@@ -46,7 +51,7 @@ export default async function AdminCompaniesPage({ searchParams }: { searchParam
                 <div />
               </div>
               {companies.map((c) => (
-                <div key={c.id} className="table-grid table-row" style={{ gridTemplateColumns: "2fr 1.4fr 1fr 1fr" }}>
+                <div key={c.id} data-search={c.companyName} className="table-grid table-row" style={{ gridTemplateColumns: "2fr 1.4fr 1fr 1fr" }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{c.companyName}</div>
                     <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Balance: {formatCents(c.balanceCents, c.currency)}</div>
@@ -59,6 +64,7 @@ export default async function AdminCompaniesPage({ searchParams }: { searchParam
             </>
           )}
         </Card>
+        </TableSearch>
       </div>
     </AdminNav>
   );

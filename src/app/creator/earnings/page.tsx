@@ -18,11 +18,23 @@ import RequestPayoutForm from "@/components/RequestPayoutForm";
 
 export default async function EarningsPage() {
   const session = await requireRole("CREATOR");
-  const creator = getCreatorByUserId(session.user.id)!;
+  const creator = (await getCreatorByUserId(session.user.id))!;
   const cur = creator.displayCurrency;
-  const submissions = listSubmissionsByCreator(creator.id);
-  const payouts = listPayouts(creator.id);
-  const available = availableBalance(creator.id, cur);
+  const [submissionsRaw, payouts, available, earnedTotal, paidTotal] = await Promise.all([
+    listSubmissionsByCreator(creator.id),
+    listPayouts(creator.id),
+    availableBalance(creator.id, cur),
+    totalApprovedEarnings(creator.id, cur),
+    totalPayouts(creator.id, cur),
+  ]);
+  // Attach each submission's paying-company currency for conversion.
+  const submissions = await Promise.all(
+    submissionsRaw.map(async (s) => {
+      const campaign = await getCampaignById(s.campaignId);
+      const companyCur = campaign ? (await getCompanyById(campaign.companyId))?.currency ?? "USD" : "USD";
+      return { ...s, campaignName: campaign?.name ?? "—", companyCur };
+    })
+  );
 
   return (
     <CreatorNav title="Earnings">
@@ -30,11 +42,11 @@ export default async function EarningsPage() {
         <div className="fu" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
           <Card style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Total earned</div>
-            <div className="tabular" style={{ fontSize: 24, fontWeight: 700 }}>{formatCents(totalApprovedEarnings(creator.id, cur), cur)}</div>
+            <div className="tabular" style={{ fontSize: 24, fontWeight: 700 }}>{formatCents(earnedTotal, cur)}</div>
           </Card>
           <Card style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Paid out</div>
-            <div className="tabular" style={{ fontSize: 24, fontWeight: 700 }}>{formatCents(totalPayouts(creator.id, cur), cur)}</div>
+            <div className="tabular" style={{ fontSize: 24, fontWeight: 700 }}>{formatCents(paidTotal, cur)}</div>
           </Card>
           <Card style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Available</div>
@@ -56,12 +68,11 @@ export default async function EarningsPage() {
             </div>
             {submissions.length === 0 && <div style={{ padding: 20, fontSize: 13, color: "var(--text-dim)" }}>No submissions yet.</div>}
             {submissions.map((s) => {
-              const campaign = getCampaignById(s.campaignId);
-              const companyCur = campaign ? getCompanyById(campaign.companyId)?.currency ?? "USD" : "USD";
+              const companyCur = s.companyCur;
               return (
                 <div key={s.id} className="table-grid table-row" style={{ gridTemplateColumns: "1fr 1.4fr 1fr 1fr 1fr" }}>
                   <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{formatDate(s.createdAt)}</div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{campaign?.name ?? "—"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{s.campaignName}</div>
                   <div style={{ fontSize: 13 }}>{s.viewsCount != null ? formatNumber(s.viewsCount) : "—"}</div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{s.creatorNetCents != null ? formatConverted(s.creatorNetCents, companyCur, cur) : "—"}</div>
                   <div><Badge tone={submissionStatusTone(s.status)} small>{s.status}</Badge></div>

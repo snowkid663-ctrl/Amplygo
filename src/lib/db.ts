@@ -1,93 +1,85 @@
-import { DatabaseSync } from "node:sqlite";
+import postgres from "postgres";
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
-// Single shared SQLite connection for the whole server process.
-// Uses Node's built-in node:sqlite (Node >=22.5) so there is no native
-// binary to download/compile - important in network-restricted environments.
+// Postgres (Supabase) data layer. Async throughout — there is no synchronous
+// Postgres driver. Queries use "$name" placeholders + a params object, which a
+// small adapter rewrites into positional $1..$n. camelCase identifiers are
+// double-quoted in the SQL so Postgres preserves their case.
 
 declare global {
   // eslint-disable-next-line no-var
-  var __amplygoDb: DatabaseSync | undefined;
+  var __amplygoSql: ReturnType<typeof postgres> | undefined;
 }
 
-function bootstrap(): DatabaseSync {
-  // Configurable so a persistent disk (e.g. Render Disk) can be mounted and
-  // pointed at via SQLITE_PATH; defaults to a local file for dev.
-  const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), "dev.db");
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const database = new DatabaseSync(dbPath);
-  database.exec("PRAGMA foreign_keys = ON;");
-  database.exec("PRAGMA journal_mode = WAL;");
-  const schemaPath = path.join(process.cwd(), "src", "lib", "schema.sql");
-  const schema = fs.readFileSync(schemaPath, "utf-8");
-  database.exec(schema);
-  migrate(database);
-  return database;
-}
-
-/**
- * Lightweight, idempotent migrations for columns added after a database was
- * first created. `CREATE TABLE IF NOT EXISTS` never alters an existing table,
- * so new columns must be added explicitly for older dev.db files.
- */
-function migrate(database: DatabaseSync) {
-  const addColumn = (table: string, column: string, decl: string) => {
-    const cols = database.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-    if (!cols.some((c) => c.name === column)) {
-      database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${decl}`);
+// Lazily connect on first query so importing this module (e.g. during
+// `next build`) never fails when DATABASE_URL isn't present yet.
+export function sql(): ReturnType<typeof postgres> {
+  if (!global.__amplygoSql) {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error(
+        "DATABASE_URL is not set. Point it at your Supabase Postgres connection string " +
+          "(Supabase → Project Settings → Database → Connection string → URI)."
+      );
     }
-  };
-  addColumn("companies", "logoUrl", "TEXT");
-  addColumn("companies", "bannerUrl", "TEXT");
-  addColumn("creators", "avatarUrl", "TEXT");
-  addColumn("creators", "bannerUrl", "TEXT");
-  addColumn("social_accounts", "externalId", "TEXT");
-  addColumn("social_accounts", "connectedVia", "TEXT NOT NULL DEFAULT 'MANUAL'");
-  addColumn("companies", "currency", "TEXT NOT NULL DEFAULT 'USD'");
-  addColumn("creators", "displayCurrency", "TEXT NOT NULL DEFAULT 'USD'");
-  addColumn("payouts", "currency", "TEXT NOT NULL DEFAULT 'USD'");
+    global.__amplygoSql = postgres(url, {
+      ssl: "require",
+      max: 5,
+      idle_timeout: 20,
+      connect_timeout: 15,
+      prepare: false, // safe with the Supabase connection pooler
+      onnotice: () => {}, // quiet "already exists" notices from ensureSchema
+    });
+  }
+  return global.__amplygoSql;
 }
-
-export const db: DatabaseSync = global.__amplygoDb ?? bootstrap();
-if (process.env.NODE_ENV !== "production") global.__amplygoDb = db;
 
 type SqlParams = Record<string, unknown>;
 
-/** Run a statement with no expected rows returned (INSERT/UPDATE/DELETE). */
-export function run(sql: string, params: SqlParams = {}) {
-  const stmt = db.prepare(sql);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return stmt.run(namedParams(params) as any);
+/** Rewrite "$name" placeholders + params object into positional $1..$n. */
+function positional(text: string, params: SqlParams) {
+  const values: unknown[] = [];
+  const out = text.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (_m, name: string) => {
+    values.push(params[name] === undefined ? null : params[name]);
+    return "$" + values.length;
+  });
+  return { out, values };
 }
 
-/** Get a single row or undefined. */
-export function get<T = any>(sql: string, params: SqlParams = {}): T | undefined {
-  const stmt = db.prepare(sql);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return stmt.get(namedParams(params) as any) as T | undefined;
+export async function run(text: string, params: SqlParams = {}): Promise<void> {
+  const { out, values } = positional(text, params);
+  await sql().unsafe(out, values as any[]);
 }
 
-/** Get all matching rows. */
-export function all<T = any>(sql: string, params: SqlParams = {}): T[] {
-  const stmt = db.prepare(sql);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return stmt.all(namedParams(params) as any) as T[];
+export async function get<T = any>(text: string, params: SqlParams = {}): Promise<T | undefined> {
+  const { out, values } = positional(text, params);
+  const rows = await sql().unsafe(out, values as any[]);
+  return (rows as any)[0] as T | undefined;
 }
 
-// node:sqlite expects named params keyed as "$name" -> convert plain object.
-function namedParams(params: SqlParams): SqlParams {
-  const out: SqlParams = {};
-  for (const [key, value] of Object.entries(params)) {
-    out[`$${key}`] = value === undefined ? null : value;
-  }
-  return out;
+export async function all<T = any>(text: string, params: SqlParams = {}): Promise<T[]> {
+  const { out, values } = positional(text, params);
+  const rows = await sql().unsafe(out, values as any[]);
+  return rows as unknown as T[];
 }
 
 export function newId(): string {
-  return crypto.randomUUID();
+  return randomUUID();
 }
 
 export function nowIso(): string {
   return new Date().toISOString();
+}
+
+// Creates tables/indexes if they don't exist. Run once at deploy/seed time.
+let schemaReady: Promise<void> | null = null;
+export function ensureSchema(): Promise<void> {
+  if (!schemaReady) {
+    const schemaPath = path.join(process.cwd(), "src", "lib", "schema.sql");
+    const schema = fs.readFileSync(schemaPath, "utf-8");
+    schemaReady = sql().unsafe(schema).then(() => undefined);
+  }
+  return schemaReady;
 }

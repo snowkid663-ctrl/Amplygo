@@ -7,10 +7,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const user = getUserById(params.id);
+  const user = await getUserById(params.id);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const { suspended } = (await req.json().catch(() => ({}))) as { suspended: boolean };
-  setUserSuspended(user.id, !!suspended);
+  await setUserSuspended(user.id, !!suspended);
   return NextResponse.json({ ok: true });
 }

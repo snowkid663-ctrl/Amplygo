@@ -6,12 +6,13 @@ import VideoTile from "@/components/VideoTile";
 import VideoCarousel from "@/components/VideoCarousel";
 import ProductShowcase from "@/components/ProductShowcase";
 import PlatformIcon from "@/components/PlatformIcon";
+import CountUp from "@/components/CountUp";
 
 const heroStats = [
-  { v: "200+", k: "Creators" },
-  { v: "35", k: "Active Campaigns" },
-  { v: "4.2M", k: "Views Generated" },
-  { v: "10", k: "Countries" },
+  { n: 200, suffix: "+", decimals: 0, k: "Creators" },
+  { n: 35, suffix: "", decimals: 0, k: "Active Campaigns" },
+  { n: 4.2, suffix: "M", decimals: 1, k: "Views Generated" },
+  { n: 10, suffix: "", decimals: 0, k: "Countries" },
 ];
 
 const traditionalCons = [
@@ -187,10 +188,12 @@ export default function Landing() {
         <Reveal delay={80}>
           <VideoCarousel />
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 760, margin: "56px auto 0" }}>
+        <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 760, margin: "56px auto 0" }}>
           {heroStats.map((s) => (
-            <div key={s.k} className="glass glass-hi" style={{ padding: "18px 10px", borderRadius: 14, textAlign: "center" }}>
-              <div className="gradient-text-pink" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}>{s.v}</div>
+            <div key={s.k} className="glass glass-hi spot-card" style={{ padding: "18px 10px", borderRadius: 14, textAlign: "center" }}>
+              <div className="gradient-text-pink" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}>
+                <CountUp to={s.n} startOnView duration={1600} suffix={s.suffix} decimals={s.decimals} />
+              </div>
               <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{s.k}</div>
             </div>
           ))}
@@ -217,9 +220,9 @@ export default function Landing() {
             Traditional influencer marketing is <span className="gradient-text-pink">broken</span>.
           </h2>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 20, alignItems: "center" }}>
+        <div className="resp-cmp" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 20, alignItems: "center" }}>
           <Reveal>
-            <div className="glass glass-hi" style={{ padding: "26px 24px", height: "100%" }}>
+            <div className="glass glass-hi spot-card" style={{ padding: "26px 24px", height: "100%" }}>
               <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-dim)", marginBottom: 16 }}>
                 Traditional
               </div>
@@ -232,7 +235,7 @@ export default function Landing() {
           </Reveal>
           <div className="vs-chip">VS</div>
           <Reveal delay={120}>
-            <div className="glass-strong glass-hi" style={{ padding: "26px 24px", height: "100%" }}>
+            <div className="glass-strong glass-hi spot-card" style={{ padding: "26px 24px", height: "100%" }}>
               <div style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--accent-text)", marginBottom: 16 }}>
                 AmplyGo
               </div>
@@ -249,7 +252,7 @@ export default function Landing() {
       {/* Vision narrative */}
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "56px 32px" }}>
         <Reveal>
-          <div className="glass-strong glass-hi" style={{ padding: "40px 40px", textAlign: "center" }}>
+          <div className="glass-strong glass-hi spot-card" style={{ padding: "40px 40px", textAlign: "center" }}>
             <SectionEyebrow>Imagine launching a campaign</SectionEyebrow>
             <div style={{ display: "flex", flexDirection: "column", gap: 14, fontSize: 19, lineHeight: 1.55, fontWeight: 500, color: "oklch(90% 0.01 264)" }}>
               <p style={{ margin: 0 }}>Instead of paying <b>$2,000</b> to one influencer…</p>
@@ -269,10 +272,10 @@ export default function Landing() {
             Turn creators into your <span className="gradient-text-pink">growth engine</span>.
           </h2>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
+        <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 28 }}>
           {companyCards.map((c, i) => (
             <Reveal key={c.title} delay={(i % 2) * 100}>
-              <div className="glass glass-hi lift" style={{ padding: "24px 24px", height: "100%" }}>
+              <div className="glass glass-hi lift spot-card" style={{ padding: "24px 24px", height: "100%" }}>
                 <div style={{ fontSize: 26, marginBottom: 10 }}>{c.icon}</div>
                 <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{c.title}</div>
                 <div style={{ fontSize: 14.5, color: "var(--text-dim)", lineHeight: 1.5 }}>{c.body}</div>
@@ -283,12 +286,12 @@ export default function Landing() {
 
         {/* Dashboard mockup */}
         <Reveal delay={100}>
-          <div className="glass-strong glass-hi" style={{ padding: "22px 22px", borderRadius: 18 }}>
+          <div className="glass-strong glass-hi spot-card" style={{ padding: "22px 22px", borderRadius: 18 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>Campaign</div>
               <span className="badge badge-sm badge-green">Active</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
               {dashboardStats.map((s) => (
                 <div key={s.k} className="stat-tile">
                   <div className="k">{s.k}</div>
@@ -318,10 +321,10 @@ export default function Landing() {
               Let brands find you.
             </p>
           </Reveal>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {creatorCards.map((c, i) => (
               <Reveal key={c.title} delay={(i % 2) * 100}>
-                <div className="glass glass-hi lift" style={{ padding: "24px 24px", height: "100%" }}>
+                <div className="glass glass-hi lift spot-card" style={{ padding: "24px 24px", height: "100%" }}>
                   <div style={{ fontSize: 26, marginBottom: 10 }}>{c.icon}</div>
                   <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{c.title}</div>
                   <div style={{ fontSize: 14.5, color: "var(--text-dim)", lineHeight: 1.5 }}>{c.body}</div>
@@ -359,9 +362,9 @@ export default function Landing() {
             One creator, or an <span className="gradient-text-pink">army</span>?
           </h2>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 20, alignItems: "stretch" }}>
+        <div className="resp-cmp" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 20, alignItems: "stretch" }}>
           <Reveal>
-            <div className="glass glass-hi" style={{ padding: "28px 24px", textAlign: "center", height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="glass glass-hi spot-card" style={{ padding: "28px 24px", textAlign: "center", height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-dim)", marginBottom: 8 }}>Traditional Sponsorship</div>
               <div style={{ fontSize: 15 }}>Company</div>
               <div style={{ color: "var(--text-dimmer)" }}>↓</div>
@@ -374,7 +377,7 @@ export default function Landing() {
           </Reveal>
           <div className="vs-chip">VS</div>
           <Reveal delay={120}>
-            <div className="glass-strong glass-hi" style={{ padding: "28px 24px", textAlign: "center", height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="glass-strong glass-hi spot-card" style={{ padding: "28px 24px", textAlign: "center", height: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--accent-text)", marginBottom: 8 }}>AmplyGo</div>
               <div style={{ fontSize: 15 }}>Company</div>
               <div style={{ color: "oklch(66% 0.24 330)" }}>↓</div>
@@ -426,9 +429,9 @@ export default function Landing() {
 
       {/* Why they love it */}
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "80px 32px 40px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           <Reveal>
-            <div className="glass glass-hi" style={{ padding: "28px 26px", height: "100%" }}>
+            <div className="glass glass-hi spot-card" style={{ padding: "28px 26px", height: "100%" }}>
               <div className="section-label" style={{ marginBottom: 8 }}>Why creators love AmplyGo</div>
               <p style={{ fontSize: 16, fontWeight: 600, fontStyle: "italic", color: "oklch(88% 0.01 264)", margin: "0 0 18px" }}>
                 “One viral video can outperform an entire sponsorship.”
@@ -441,7 +444,7 @@ export default function Landing() {
             </div>
           </Reveal>
           <Reveal delay={120}>
-            <div className="glass glass-hi" style={{ padding: "28px 26px", height: "100%" }}>
+            <div className="glass glass-hi spot-card" style={{ padding: "28px 26px", height: "100%" }}>
               <div className="section-label" style={{ marginBottom: 18 }}>Why companies love AmplyGo</div>
               <ul className="compare-list">
                 {companyLoves.map((t) => (
@@ -455,7 +458,7 @@ export default function Landing() {
 
       {/* FAQ */}
       <div style={{ borderTop: "1px solid var(--card-border)", background: "oklch(100% 0 0 / 0.015)" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "96px 32px", display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 48, alignItems: "start" }}>
+        <div className="resp-collapse" style={{ maxWidth: 1000, margin: "0 auto", padding: "96px 32px", display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 48, alignItems: "start" }}>
           <Reveal>
             <div style={{ position: "sticky", top: 96 }}>
               <SectionEyebrow>FAQ</SectionEyebrow>
@@ -486,7 +489,7 @@ export default function Landing() {
       {/* Final CTA */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "96px 32px 96px" }}>
         <Reveal>
-          <div className="glass-strong glass-hi" style={{ padding: "60px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, position: "relative", overflow: "hidden" }}>
+          <div className="glass-strong glass-hi grad-border" style={{ padding: "60px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 18, position: "relative", overflow: "hidden" }}>
             <div className="hero-spotlight" aria-hidden="true" style={{ top: -520, opacity: 0.7 }} />
             <h2 style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.02em", margin: 0, position: "relative" }}>
               Ready to <span className="gradient-text-pink">scale with creators</span>?

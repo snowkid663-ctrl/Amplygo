@@ -13,8 +13,8 @@ import type { CampaignStatus } from "@/lib/types";
 
 export default async function CompanyCampaignsPage({ searchParams }: { searchParams: { status?: string } }) {
   const session = await requireRole("COMPANY");
-  const company = getCompanyByUserId(session.user.id)!;
-  const all = listCampaignsByCompany(company.id);
+  const company = (await getCompanyByUserId(session.user.id))!;
+  const all = await listCampaignsByCompany(company.id);
   const filter = (searchParams.status ?? "all") as CampaignStatus | "all";
   const campaigns = filter === "all" ? all : all.filter((c) => c.status === filter);
 

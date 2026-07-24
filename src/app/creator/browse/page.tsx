@@ -12,14 +12,18 @@ import EmptyState from "@/components/ui/EmptyState";
 
 export default async function BrowseCampaignsPage({ searchParams }: { searchParams: { platform?: string } }) {
   const session = await requireRole("CREATOR");
-  const creator = getCreatorByUserId(session.user.id)!;
+  const creator = (await getCreatorByUserId(session.user.id))!;
   const cur = creator.displayCurrency;
-  const accounts = listSocialAccounts(creator.id);
+  const accounts = await listSocialAccounts(creator.id);
   const connectedPlatforms = new Set(accounts.map((a) => a.platform));
 
   const filter = (searchParams.platform ?? "all") as Platform | "all";
-  const all = listOpenCampaignsForCreator();
-  const campaigns = filter === "all" ? all : all.filter((c) => c.platform === filter);
+  const all = await listOpenCampaignsForCreator();
+  const filtered = filter === "all" ? all : all.filter((c) => c.platform === filter);
+  // Resolve each campaign's paying-company currency up front (used for conversion).
+  const campaigns = await Promise.all(
+    filtered.map(async (c) => ({ ...c, companyCurrency: (await getCompanyById(c.companyId))?.currency ?? "USD" }))
+  );
 
   return (
     <CreatorNav
@@ -52,7 +56,7 @@ export default async function BrowseCampaignsPage({ searchParams }: { searchPara
             {campaigns.map((c) => {
               const budgetLeft = Math.max(0, c.budgetCents - c.spentCents);
               const canJoin = connectedPlatforms.has(c.platform);
-              const companyCur = getCompanyById(c.companyId)?.currency ?? "USD";
+              const companyCur = c.companyCurrency;
               return (
                 <Link
                   key={c.id}

@@ -12,8 +12,8 @@ import ProfileMediaEditor from "@/components/ProfileMediaEditor";
 
 export default async function CompanySettingsPage() {
   const session = await requireRole("COMPANY");
-  const company = getCompanyByUserId(session.user.id)!;
-  const transactions = listBalanceTransactions(company.id);
+  const company = (await getCompanyByUserId(session.user.id))!;
+  const transactions = await listBalanceTransactions(company.id);
 
   return (
     <CompanyNav title="Settings">

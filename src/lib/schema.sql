@@ -1,121 +1,121 @@
--- AmplyGo MVP schema (SQLite via node:sqlite, no ORM/native binary needed)
+-- AmplyGo schema (Postgres / Supabase). camelCase identifiers are quoted so
+-- Postgres preserves their case (unquoted identifiers fold to lowercase).
 
 CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  passwordHash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('COMPANY','CREATOR','ADMIN')),
-  name TEXT NOT NULL,
-  suspended INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  id text PRIMARY KEY,
+  email text UNIQUE NOT NULL,
+  "passwordHash" text NOT NULL,
+  role text NOT NULL CHECK (role IN ('COMPANY','CREATOR','ADMIN')),
+  name text NOT NULL,
+  suspended integer NOT NULL DEFAULT 0,
+  "createdAt" text NOT NULL DEFAULT (now()::text)
 );
 
 CREATE TABLE IF NOT EXISTS companies (
-  id TEXT PRIMARY KEY,
-  userId TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  companyName TEXT NOT NULL,
-  website TEXT,
-  about TEXT,
-  logoUrl TEXT,
-  bannerUrl TEXT,
-  currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD','EUR','BRL')),
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','SUSPENDED','REJECTED')),
-  balanceCents INTEGER NOT NULL DEFAULT 0,
-  createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  id text PRIMARY KEY,
+  "userId" text UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  "companyName" text NOT NULL,
+  website text,
+  about text,
+  "logoUrl" text,
+  "bannerUrl" text,
+  currency text NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD','EUR','BRL')),
+  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','SUSPENDED','REJECTED')),
+  "balanceCents" integer NOT NULL DEFAULT 0,
+  "createdAt" text NOT NULL DEFAULT (now()::text)
 );
 
 CREATE TABLE IF NOT EXISTS creators (
-  id TEXT PRIMARY KEY,
-  userId TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  displayName TEXT NOT NULL,
-  bio TEXT,
-  avatarUrl TEXT,
-  bannerUrl TEXT,
-  displayCurrency TEXT NOT NULL DEFAULT 'USD' CHECK (displayCurrency IN ('USD','EUR','BRL')),
-  createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  id text PRIMARY KEY,
+  "userId" text UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  "displayName" text NOT NULL,
+  bio text,
+  "avatarUrl" text,
+  "bannerUrl" text,
+  "displayCurrency" text NOT NULL DEFAULT 'USD' CHECK ("displayCurrency" IN ('USD','EUR','BRL')),
+  "createdAt" text NOT NULL DEFAULT (now()::text)
 );
 
--- MOCK/PLACEHOLDER: no real OAuth in the MVP. See README "Phase 2" notes.
 CREATE TABLE IF NOT EXISTS social_accounts (
-  id TEXT PRIMARY KEY,
-  creatorId TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
-  platform TEXT NOT NULL CHECK (platform IN ('TIKTOK','YOUTUBE_SHORTS','INSTAGRAM_REELS')),
-  handle TEXT NOT NULL,
-  externalId TEXT,
-  connectedVia TEXT NOT NULL DEFAULT 'MANUAL' CHECK (connectedVia IN ('MANUAL','OAUTH')),
-  connectedAt TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE (creatorId, platform)
+  id text PRIMARY KEY,
+  "creatorId" text NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  platform text NOT NULL CHECK (platform IN ('TIKTOK','YOUTUBE_SHORTS','INSTAGRAM_REELS')),
+  handle text NOT NULL,
+  "externalId" text,
+  "connectedVia" text NOT NULL DEFAULT 'MANUAL' CHECK ("connectedVia" IN ('MANUAL','OAUTH')),
+  "connectedAt" text NOT NULL DEFAULT (now()::text),
+  UNIQUE ("creatorId", platform)
 );
 
 CREATE TABLE IF NOT EXISTS campaigns (
-  id TEXT PRIMARY KEY,
-  companyId TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  brand TEXT NOT NULL,
-  category TEXT NOT NULL,
-  platform TEXT NOT NULL CHECK (platform IN ('TIKTOK','YOUTUBE_SHORTS','INSTAGRAM_REELS')),
-  language TEXT NOT NULL DEFAULT 'English',
-  country TEXT NOT NULL DEFAULT 'Worldwide',
-  cpmCents INTEGER NOT NULL,
-  budgetCents INTEGER NOT NULL,
-  spentCents INTEGER NOT NULL DEFAULT 0,
-  maxCreators INTEGER,
-  endDate TEXT,
-  rulesChecklist TEXT NOT NULL,
-  rulesExtra TEXT,
-  status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','ACTIVE','PAUSED','ENDED')),
-  createdAt TEXT NOT NULL DEFAULT (datetime('now')),
-  updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+  id text PRIMARY KEY,
+  "companyId" text NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text NOT NULL,
+  brand text NOT NULL,
+  category text NOT NULL,
+  platform text NOT NULL CHECK (platform IN ('TIKTOK','YOUTUBE_SHORTS','INSTAGRAM_REELS')),
+  language text NOT NULL DEFAULT 'English',
+  country text NOT NULL DEFAULT 'Worldwide',
+  "cpmCents" integer NOT NULL,
+  "budgetCents" integer NOT NULL,
+  "spentCents" integer NOT NULL DEFAULT 0,
+  "maxCreators" integer,
+  "endDate" text,
+  "rulesChecklist" text NOT NULL,
+  "rulesExtra" text,
+  status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','ACTIVE','PAUSED','ENDED')),
+  "createdAt" text NOT NULL DEFAULT (now()::text),
+  "updatedAt" text NOT NULL DEFAULT (now()::text)
 );
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_targeting ON campaigns(platform, language, country);
 
 CREATE TABLE IF NOT EXISTS participations (
-  id TEXT PRIMARY KEY,
-  campaignId TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-  creatorId TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
-  rulesAccepted INTEGER NOT NULL DEFAULT 0,
-  joinedAt TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE (campaignId, creatorId)
+  id text PRIMARY KEY,
+  "campaignId" text NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  "creatorId" text NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  "rulesAccepted" integer NOT NULL DEFAULT 0,
+  "joinedAt" text NOT NULL DEFAULT (now()::text),
+  UNIQUE ("campaignId", "creatorId")
 );
 
 CREATE TABLE IF NOT EXISTS submissions (
-  id TEXT PRIMARY KEY,
-  campaignId TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-  creatorId TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
-  participationId TEXT UNIQUE NOT NULL REFERENCES participations(id) ON DELETE CASCADE,
-  videoUrl TEXT NOT NULL,
-  platform TEXT NOT NULL CHECK (platform IN ('TIKTOK','YOUTUBE_SHORTS','INSTAGRAM_REELS')),
-  publishedAt TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED','FLAGGED')),
-  flagged INTEGER NOT NULL DEFAULT 0,
-  flagReason TEXT,
-  viewsCount INTEGER,
-  grossCents INTEGER,
-  creatorNetCents INTEGER,
-  platformFeeCents INTEGER,
-  reviewedAt TEXT,
-  reviewNote TEXT,
-  createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  id text PRIMARY KEY,
+  "campaignId" text NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  "creatorId" text NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  "participationId" text UNIQUE NOT NULL REFERENCES participations(id) ON DELETE CASCADE,
+  "videoUrl" text NOT NULL,
+  platform text NOT NULL CHECK (platform IN ('TIKTOK','YOUTUBE_SHORTS','INSTAGRAM_REELS')),
+  "publishedAt" text NOT NULL,
+  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED','FLAGGED')),
+  flagged integer NOT NULL DEFAULT 0,
+  "flagReason" text,
+  "viewsCount" integer,
+  "grossCents" integer,
+  "creatorNetCents" integer,
+  "platformFeeCents" integer,
+  "reviewedAt" text,
+  "reviewNote" text,
+  "createdAt" text NOT NULL DEFAULT (now()::text)
 );
 CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
 
 CREATE TABLE IF NOT EXISTS balance_transactions (
-  id TEXT PRIMARY KEY,
-  companyId TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-  amountCents INTEGER NOT NULL,
-  reason TEXT NOT NULL,
-  createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  id text PRIMARY KEY,
+  "companyId" text NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  "amountCents" integer NOT NULL,
+  reason text NOT NULL,
+  "createdAt" text NOT NULL DEFAULT (now()::text)
 );
 
 CREATE TABLE IF NOT EXISTS payouts (
-  id TEXT PRIMARY KEY,
-  creatorId TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
-  amountCents INTEGER NOT NULL,
-  currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD','EUR','BRL')),
-  method TEXT NOT NULL CHECK (method IN ('PIX','PAYPAL')),
-  status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','PAID')),
-  createdAt TEXT NOT NULL DEFAULT (datetime('now')),
-  paidAt TEXT
+  id text PRIMARY KEY,
+  "creatorId" text NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  "amountCents" integer NOT NULL,
+  currency text NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD','EUR','BRL')),
+  method text NOT NULL CHECK (method IN ('PIX','PAYPAL')),
+  status text NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','PAID')),
+  "createdAt" text NOT NULL DEFAULT (now()::text),
+  "paidAt" text
 );

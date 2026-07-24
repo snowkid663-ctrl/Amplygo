@@ -4,6 +4,8 @@ import { getCompanyByUserId, listCampaignsByCompany, listSubmissionsByCampaign }
 import { formatCents } from "@/lib/money";
 import { campaignStatusTone, companyStatusTone } from "@/lib/format";
 import CompanyNav from "@/components/CompanyNav";
+import CountUp from "@/components/CountUp";
+import Sparkline from "@/components/Sparkline";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -11,14 +13,15 @@ import EmptyState from "@/components/ui/EmptyState";
 
 export default async function CompanyDashboard() {
   const session = await requireRole("COMPANY");
-  const company = getCompanyByUserId(session.user.id)!;
-  const campaigns = listCampaignsByCompany(company.id);
+  const company = (await getCompanyByUserId(session.user.id))!;
+  const campaigns = await listCampaignsByCompany(company.id);
 
   const active = campaigns.filter((c) => c.status === "ACTIVE");
   const totalBudget = campaigns.reduce((sum, c) => sum + c.budgetCents, 0);
   const totalSpent = campaigns.reduce((sum, c) => sum + c.spentCents, 0);
-  const pendingSubmissions = campaigns.reduce(
-    (sum, c) => sum + listSubmissionsByCampaign(c.id).filter((s) => s.status === "PENDING").length,
+  const subsPerCampaign = await Promise.all(campaigns.map((c) => listSubmissionsByCampaign(c.id)));
+  const pendingSubmissions = subsPerCampaign.reduce(
+    (sum, subs) => sum + subs.filter((s) => s.status === "PENDING").length,
     0
   );
 
@@ -52,24 +55,28 @@ export default async function CompanyDashboard() {
           <LinkButton href="/company/campaigns/new">Create campaign</LinkButton>
         </div>
 
-        <div className="fu" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
-          <Card style={{ padding: 18 }}>
+        <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
+          <Card className="lift spot-card fu fu-1" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Active campaigns</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}>{active.length}</div>
+            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={active.length} /></div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="co-active" /></div>
           </Card>
-          <Card style={{ padding: 18 }}>
+          <Card className="lift spot-card fu fu-2" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Budget committed</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}>{formatCents(totalBudget, company.currency)}</div>
+            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={totalBudget} currency={company.currency} /></div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="co-budget" /></div>
           </Card>
-          <Card style={{ padding: 18 }}>
+          <Card className="lift spot-card fu fu-3" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Spent (approved views)</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}>{formatCents(totalSpent, company.currency)}</div>
+            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={totalSpent} currency={company.currency} /></div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="co-spent" /></div>
           </Card>
-          <Card style={{ padding: 18 }}>
+          <Card className="lift spot-card fu fu-4" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Submissions awaiting review</div>
             <div className="tabular" style={{ fontSize: 22, fontWeight: 700, color: pendingSubmissions ? "var(--amber)" : "white" }}>
-              {pendingSubmissions}
+              <CountUp to={pendingSubmissions} />
             </div>
+            <div style={{ marginTop: 10 }}><Sparkline seed="co-pending" up={false} /></div>
           </Card>
         </div>
 

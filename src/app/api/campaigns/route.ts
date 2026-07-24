@@ -12,9 +12,9 @@ export async function GET() {
   if (!session?.user || session.user.role !== "COMPANY") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const company = getCompanyByUserId(session.user.id);
+  const company = await getCompanyByUserId(session.user.id);
   if (!company) return NextResponse.json({ error: "Company profile not found" }, { status: 404 });
-  return NextResponse.json({ campaigns: listCampaignsByCompany(company.id) });
+  return NextResponse.json({ campaigns: await listCampaignsByCompany(company.id) });
 }
 
 export async function POST(req: Request) {
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   if (!session?.user || session.user.role !== "COMPANY") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const company = getCompanyByUserId(session.user.id);
+  const company = await getCompanyByUserId(session.user.id);
   if (!company) return NextResponse.json({ error: "Company profile not found" }, { status: 404 });
 
   const body = await req.json().catch(() => null);
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const campaign = createCampaign({
+  const campaign = await createCampaign({
     companyId: company.id,
     name: name.trim(),
     description: description.trim(),

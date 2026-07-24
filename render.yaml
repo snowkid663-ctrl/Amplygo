@@ -18,10 +18,17 @@ services:
       # A strong secret is generated once and kept stable across deploys.
       - key: NEXTAUTH_SECRET
         generateValue: true
-      # Recreates the demo accounts on boot (filesystem is ephemeral on the
-      # free plan). Set to "false" once you attach a persistent disk.
+      # Supabase Postgres connection string — set in the Render dashboard.
+      - key: DATABASE_URL
+        sync: false
+      # Ensures the schema + demo accounts exist on boot (idempotent).
       - key: SEED_ON_START
         value: "true"
+      # Admin login — set a strong password in the Render dashboard.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       # Optional OAuth — fill in the Render dashboard to enable Google/YouTube.
       - key: GOOGLE_CLIENT_ID
         sync: false

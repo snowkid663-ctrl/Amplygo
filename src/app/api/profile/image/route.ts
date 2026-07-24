@@ -27,17 +27,17 @@ function columnFor(role: string, kind: Kind): "logoUrl" | "bannerUrl" | "avatarU
 
 function persist(role: string, ownerId: string, kind: Kind, url: string | null) {
   const field = columnFor(role, kind);
-  if (role === "COMPANY") updateCompanyImage(ownerId, field as "logoUrl" | "bannerUrl", url);
-  else updateCreatorImage(ownerId, field as "avatarUrl" | "bannerUrl", url);
+  if (role === "COMPANY") return updateCompanyImage(ownerId, field as "logoUrl" | "bannerUrl", url);
+  return updateCreatorImage(ownerId, field as "avatarUrl" | "bannerUrl", url);
 }
 
 async function resolveOwner(role: string, userId: string) {
   if (role === "COMPANY") {
-    const c = getCompanyByUserId(userId);
+    const c = await getCompanyByUserId(userId);
     return c?.id ?? null;
   }
   if (role === "CREATOR") {
-    const c = getCreatorByUserId(userId);
+    const c = await getCreatorByUserId(userId);
     return c?.id ?? null;
   }
   return null; // admins have no profile media
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   await writeFile(path.join(dir, filename), bytes);
   const url = `/uploads/${filename}`;
 
-  persist(role, ownerId, kind as Kind, url);
+  await persist(role, ownerId, kind as Kind, url);
   return NextResponse.json({ ok: true, url });
 }
 
@@ -97,6 +97,6 @@ export async function DELETE(req: Request) {
   if (!ownerId) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
   // We only unset the reference; leftover files are harmless for this MVP.
-  persist(role, ownerId, kind as Kind, null);
+  await persist(role, ownerId, kind as Kind, null);
   return NextResponse.json({ ok: true });
 }

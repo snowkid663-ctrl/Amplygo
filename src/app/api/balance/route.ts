@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!session?.user || session.user.role !== "COMPANY") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const company = getCompanyByUserId(session.user.id);
+  const company = await getCompanyByUserId(session.user.id);
   if (!company) return NextResponse.json({ error: "Company profile not found" }, { status: 404 });
 
   const { amount } = (await req.json().catch(() => ({}))) as { amount: number };
@@ -19,6 +19,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 });
   }
 
-  addCompanyBalance(company.id, amountCents, "Manual deposit (mock)");
+  await addCompanyBalance(company.id, amountCents, "Manual deposit (mock)");
   return NextResponse.json({ ok: true });
 }

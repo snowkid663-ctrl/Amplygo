@@ -18,18 +18,18 @@ import CampaignJoinPanel from "@/components/CampaignJoinPanel";
 
 export default async function CreatorCampaignDetail({ params }: { params: { id: string } }) {
   const session = await requireRole("CREATOR");
-  const creator = getCreatorByUserId(session.user.id)!;
-  const campaign = getCampaignById(params.id);
+  const creator = (await getCreatorByUserId(session.user.id))!;
+  const campaign = await getCampaignById(params.id);
   if (!campaign) notFound();
 
-  const participation = getParticipation(campaign.id, creator.id);
-  const submission = participation ? getSubmissionByParticipation(participation.id) ?? null : null;
-  const accounts = listSocialAccounts(creator.id);
+  const participation = await getParticipation(campaign.id, creator.id);
+  const submission = participation ? (await getSubmissionByParticipation(participation.id)) ?? null : null;
+  const accounts = await listSocialAccounts(creator.id);
   const hasMatchingAccount = accounts.some((a) => a.platform === campaign.platform);
   const rulesChecklist: string[] = JSON.parse(campaign.rulesChecklist || "[]");
   const budgetLeft = Math.max(0, campaign.budgetCents - campaign.spentCents);
   const cur = creator.displayCurrency;
-  const companyCur = getCompanyById(campaign.companyId)?.currency ?? "USD";
+  const companyCur = (await getCompanyById(campaign.companyId))?.currency ?? "USD";
 
   return (
     <CreatorNav title={campaign.name}>

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   // If an account already exists for this email, there is nothing to do.
-  if (getUserByEmail(session.user.email.toLowerCase())) {
+  if (await getUserByEmail(session.user.email.toLowerCase())) {
     return NextResponse.json({ ok: true, alreadyExists: true });
   }
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   // OAuth users have no password; store a random unusable hash so the
   // credentials provider can never match, while satisfying the schema.
   const passwordHash = await bcrypt.hash(randomUUID(), 10);
-  const user = createUser({
+  const user = await createUser({
     email: session.user.email.toLowerCase().trim(),
     passwordHash,
     role,
@@ -43,9 +43,9 @@ export async function POST(req: Request) {
   });
 
   if (role === "COMPANY") {
-    createCompany({ userId: user.id, companyName: String(body.companyName).trim() });
+    await createCompany({ userId: user.id, companyName: String(body.companyName).trim() });
   } else {
-    createCreator({ userId: user.id, displayName });
+    await createCreator({ userId: user.id, displayName });
   }
 
   return NextResponse.json({ ok: true });

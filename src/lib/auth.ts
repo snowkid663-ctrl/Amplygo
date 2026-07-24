@@ -19,7 +19,7 @@ const providers: AuthOptions["providers"] = [
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) return null;
-      const user = getUserByEmail(credentials.email.toLowerCase().trim());
+      const user = await getUserByEmail(credentials.email.toLowerCase().trim());
       if (!user) return null;
       const valid = await bcrypt.compare(credentials.password, user.passwordHash);
       if (!valid) return null;
@@ -47,10 +47,10 @@ if (googleEnabled) {
 }
 
 /** Populate a JWT from the current DB row for a given email (or flag onboarding). */
-function hydrateFromEmail(token: any, email?: string | null) {
+async function hydrateFromEmail(token: any, email?: string | null) {
   const normalized = email?.toLowerCase().trim();
   if (!normalized) return token;
-  const existing = getUserByEmail(normalized);
+  const existing = await getUserByEmail(normalized);
   if (existing) {
     token.id = existing.id;
     token.role = existing.role;
@@ -102,11 +102,11 @@ export const authOptions: AuthOptions = {
         session.user.currency = "USD";
         if (token.id) {
           if (token.role === "COMPANY") {
-            const c = getCompanyByUserId(token.id);
+            const c = await getCompanyByUserId(token.id);
             session.user.image = c?.logoUrl ?? null;
             session.user.currency = c?.currency ?? "USD";
           } else if (token.role === "CREATOR") {
-            const c = getCreatorByUserId(token.id);
+            const c = await getCreatorByUserId(token.id);
             session.user.image = c?.avatarUrl ?? null;
             session.user.currency = c?.displayCurrency ?? "USD";
           }

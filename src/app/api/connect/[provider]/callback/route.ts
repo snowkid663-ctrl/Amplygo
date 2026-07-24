@@ -57,7 +57,7 @@ export async function GET(req: Request, { params }: { params: { provider: string
 
   const session = await getSession();
   if (session?.user?.role !== "CREATOR") return NextResponse.redirect(new URL("/auth", req.url));
-  const creator = getCreatorByUserId(session.user.id);
+  const creator = await getCreatorByUserId(session.user.id);
   if (!creator) return NextResponse.redirect(new URL("/auth", req.url));
 
   const { searchParams } = new URL(req.url);
@@ -76,7 +76,7 @@ export async function GET(req: Request, { params }: { params: { provider: string
   if (!identity) return fail(req, "identity");
 
   const cfg = providerConfig(provider);
-  connectSocialAccountOAuth(creator.id, cfg.platform, identity);
+  await connectSocialAccountOAuth(creator.id, cfg.platform, identity);
 
   const res = NextResponse.redirect(new URL(`${SETTINGS}?connected=${provider}`, req.url));
   res.cookies.delete(cookieName);

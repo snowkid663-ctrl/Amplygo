@@ -32,19 +32,19 @@ export async function POST(req: Request) {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  if (getUserByEmail(normalizedEmail)) {
+  if (await getUserByEmail(normalizedEmail)) {
     return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = createUser({ email: normalizedEmail, passwordHash, role, name: name.trim() });
+  const user = await createUser({ email: normalizedEmail, passwordHash, role, name: name.trim() });
 
   if (role === "COMPANY") {
     // Empresas comecam como PENDING - precisam de aprovacao manual do admin
     // antes de poder gastar (Product Spec: "Regras do MVP > Empresas").
-    createCompany({ userId: user.id, companyName: companyName!.trim() });
+    await createCompany({ userId: user.id, companyName: companyName!.trim() });
   } else {
-    createCreator({ userId: user.id, displayName: name.trim() });
+    await createCreator({ userId: user.id, displayName: name.trim() });
   }
 
   return NextResponse.json({ ok: true });

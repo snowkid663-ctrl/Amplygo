@@ -45,27 +45,28 @@ callback URLs in the provider console, e.g.:
 
 See `SETUP-OAUTH.md` for the full setup.
 
-## ⚠️ Data persistence (important)
+## Database — Supabase (Postgres)
 
-The **free plan has an ephemeral filesystem** — the SQLite database and any
-uploaded images (`public/uploads`) are **wiped on every deploy/restart**. The
-seeded demo accounts are recreated on boot (`SEED_ON_START=true`), but campaigns,
-balances and uploads created at runtime do **not** survive a redeploy.
+The app uses **Supabase Postgres** via `DATABASE_URL`, so data **persists**
+across deploys (unlike the old local SQLite). Set it up once:
 
-To make data persistent, upgrade to a paid instance and attach a **Render Disk**:
+1. Create a project at <https://supabase.com>.
+2. **Project Settings → Database → Connection string → URI** — copy it
+   (looks like `postgresql://postgres:PASSWORD@db.xxxxx.supabase.co:5432/postgres`).
+3. Paste it as the **`DATABASE_URL`** env var in the Render service (and in your
+   local `.env` for dev).
 
-1. Service → **Disks → Add Disk**, mount path e.g. `/var/data`, size 1 GB.
-2. Add env var `SQLITE_PATH=/var/data/amplygo.db` (the app reads this).
-3. Set `SEED_ON_START=false` (seed once via the shell instead: `npm run seed`).
+On boot the start command runs `npm run seed`, which **creates the schema** and
+the demo accounts (idempotent — safe to run every deploy).
 
-> Uploaded images would still need object storage (e.g. S3/R2) for real
-> persistence — the disk only covers the database. That's a phase-2 item.
+> **Uploaded images** (`public/uploads`) still live on Render's ephemeral disk,
+> so they reset on redeploy. Moving them to Supabase Storage is a phase-2 item;
+> the database itself is fully persistent.
 
 ## Notes
 
-- Keep the service on a **single instance** — SQLite is a local file and
-  doesn't share across instances.
-- Free services **spin down** after inactivity; the first request afterwards
-  is slow while it wakes up.
+- Free services **spin down** after inactivity; the first request afterwards is
+  slow while it wakes up.
 - `.env` in the repo only holds dev defaults; Render's environment variables
   take precedence in production.
+- Local dev also needs `DATABASE_URL` set (it hits the same Supabase database).
