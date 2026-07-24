@@ -1,0 +1,11 @@
+node_modules
+.next
+dev.db
+dev.db-journal
+dev.db-shm
+dev.db-wal
+desktop.ini
+**/desktop.ini
+.env.local
+/public/uploads/*
+!/public/uploads/.gitkeep

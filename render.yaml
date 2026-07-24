@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: amplygo
+    runtime: node
+    plan: free
+    # devDependencies (typescript, tsx) are needed to build + seed, so force
+    # them even when NODE_ENV=production would otherwise skip them.
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: |
+      export NEXTAUTH_URL="${NEXTAUTH_URL:-$RENDER_EXTERNAL_URL}"
+      if [ "$SEED_ON_START" = "true" ]; then npm run seed || true; fi
+      npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: NODE_ENV
+        value: production
+      # A strong secret is generated once and kept stable across deploys.
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      # Recreates the demo accounts on boot (filesystem is ephemeral on the
+      # free plan). Set to "false" once you attach a persistent disk.
+      - key: SEED_ON_START
+        value: "true"
+      # Optional OAuth — fill in the Render dashboard to enable Google/YouTube.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: INSTAGRAM_CLIENT_ID
+        sync: false
+      - key: INSTAGRAM_CLIENT_SECRET
+        sync: false
