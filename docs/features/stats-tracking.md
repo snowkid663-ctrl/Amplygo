@@ -17,14 +17,17 @@ Public YouTube video statistics need only an **API key** (no per-creator OAuth).
    ids (≤50/request) → `videos.list?part=statistics` → writes a snapshot to
    `video_stats` and updates `submissions.viewsCount/likesCount/commentsCount/
    statsUpdatedAt`. So existing analytics (which read `viewsCount`) become real.
-3. Runs on a schedule via a **Render cron** (`amplygo-refresh-stats`, every 6h,
-   `npm run refresh-stats`) and/or on demand via `POST /api/cron/refresh-stats`
-   (auth: `Bearer $CRON_SECRET` or `?key=`).
+3. Runs on a schedule via **GitHub Actions** (`.github/workflows/refresh-stats.yml`,
+   every 6h) which calls `POST /api/cron/refresh-stats` (auth: `Bearer $CRON_SECRET`
+   or `?key=`). Render cron jobs need a paid plan, so we schedule for free from
+   Actions; the web service does the fetch + DB writes. `npm run refresh-stats`
+   also runs it locally / from any scheduler.
 
 **Config (Render dashboard / .env.local)**
 - `YOUTUBE_API_KEY` — Google Cloud → Credentials → API key (enable YouTube Data
   API v3). Without it, refresh is a safe no-op (`{enabled:false}`).
 - `CRON_SECRET` — protects the HTTP endpoint (503 if unset, so never open).
+  Set the **same** value as a GitHub Actions repo secret named `CRON_SECRET`.
 
 **Data model**
 - `submissions.externalVideoId / likesCount / commentsCount / statsUpdatedAt`

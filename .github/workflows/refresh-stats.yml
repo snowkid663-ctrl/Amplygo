@@ -1,0 +1,18 @@
+name: Refresh video stats
+
+# Render cron jobs need a paid plan, so we refresh real engagement stats for
+# free from GitHub Actions: this calls the app's protected endpoint, which does
+# the YouTube fetch + DB writes on the web service.
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours (UTC)
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger stats refresh
+        run: |
+          curl -fsS -X POST "https://amplygo.com/api/cron/refresh-stats" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
