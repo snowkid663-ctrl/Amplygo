@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { getSession } from "@/lib/session";
 import {
   getCompanyByUserId,
@@ -10,6 +7,7 @@ import {
   updateCreatorImage,
   updateCompanyBannerPos,
   updateCreatorBannerPos,
+  saveMedia,
 } from "@/lib/data";
 
 const ALLOWED_EXT: Record<string, string> = {
@@ -63,19 +61,15 @@ export async function POST(req: Request) {
   }
   if (!(file instanceof File)) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-  const ext = ALLOWED_EXT[file.type];
-  if (!ext) return NextResponse.json({ error: "Unsupported image type (use PNG, JPEG, WebP or GIF)" }, { status: 400 });
+  if (!ALLOWED_EXT[file.type]) return NextResponse.json({ error: "Unsupported image type (use PNG, JPEG, WebP or GIF)" }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "Image too large (max 4 MB)" }, { status: 400 });
 
   const ownerId = await resolveOwner(role, session.user.id);
   if (!ownerId) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  const filename = `${randomUUID()}.${ext}`;
-  await writeFile(path.join(dir, filename), bytes);
-  const url = `/uploads/${filename}`;
+  const id = await saveMedia(file.type, bytes);
+  const url = `/api/media/${id}`;
 
   await persist(role, ownerId, kind as Kind, url);
   return NextResponse.json({ ok: true, url });

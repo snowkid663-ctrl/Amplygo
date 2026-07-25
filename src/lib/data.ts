@@ -604,6 +604,18 @@ export async function creatorBadgeStats(creatorId: string): Promise<CreatorBadge
   };
 }
 
+// ---------- Media (uploaded images stored in Postgres) ----------
+
+export async function saveMedia(mime: string, data: Buffer): Promise<string> {
+  const id = newId();
+  await run(`INSERT INTO media (id, mime, data) VALUES ($id, $mime, $data)`, { id, mime, data });
+  return id;
+}
+
+export function getMedia(id: string): Promise<{ mime: string; data: Buffer | Uint8Array } | undefined> {
+  return get<{ mime: string; data: Buffer | Uint8Array }>(`SELECT mime, data FROM media WHERE id = $id`, { id });
+}
+
 // ---------- Creator public profile (performance panel) ----------
 
 export interface CreatorProfileData {

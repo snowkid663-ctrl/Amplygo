@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { getSession } from "@/lib/session";
+import { saveMedia } from "@/lib/data";
 
 const ALLOWED_EXT: Record<string, string> = {
   "image/png": "png",
@@ -23,14 +21,10 @@ export async function POST(req: Request) {
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-  const ext = ALLOWED_EXT[file.type];
-  if (!ext) return NextResponse.json({ error: "Unsupported image type (use PNG, JPEG, WebP or GIF)" }, { status: 400 });
+  if (!ALLOWED_EXT[file.type]) return NextResponse.json({ error: "Unsupported image type (use PNG, JPEG, WebP or GIF)" }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "Image too large (max 5 MB)" }, { status: 400 });
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  const filename = `${randomUUID()}.${ext}`;
-  await writeFile(path.join(dir, filename), bytes);
-  return NextResponse.json({ ok: true, url: `/uploads/${filename}` });
+  const id = await saveMedia(file.type, bytes);
+  return NextResponse.json({ ok: true, url: `/api/media/${id}` });
 }

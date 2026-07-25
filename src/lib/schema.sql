@@ -155,3 +155,12 @@ ALTER TABLE creators ADD COLUMN IF NOT EXISTS "bannerPos" integer NOT NULL DEFAU
 -- Invite page theming (companies can brand their invite links).
 ALTER TABLE campaign_invites ADD COLUMN IF NOT EXISTS "themeColor" text;
 ALTER TABLE campaign_invites ADD COLUMN IF NOT EXISTS "themeBgUrl" text;
+
+-- Uploaded images live in Postgres (the host filesystem is ephemeral on Render),
+-- served via /api/media/<id>.
+CREATE TABLE IF NOT EXISTS media (
+  id text PRIMARY KEY,
+  mime text NOT NULL,
+  data bytea NOT NULL,
+  "createdAt" text NOT NULL DEFAULT (now()::text)
+);

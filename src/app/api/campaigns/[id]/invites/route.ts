@@ -26,10 +26,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const days = body.expiresDays && Number(body.expiresDays) > 0 ? Number(body.expiresDays) : null;
   const expiresAt = days ? new Date(Date.now() + days * 86400000).toISOString() : null;
 
-  // Only accept a #rrggbb hex color and an uploaded /uploads/... path (or https URL).
+  // Only accept a #rrggbb hex color and an uploaded media path (or https URL).
   const themeColor = typeof body.themeColor === "string" && /^#[0-9a-fA-F]{6}$/.test(body.themeColor) ? body.themeColor : null;
   const bg = typeof body.themeBgUrl === "string" ? body.themeBgUrl.trim() : "";
-  const themeBgUrl = /^\/uploads\/[\w.-]+$/.test(bg) || /^https:\/\/\S+$/.test(bg) ? bg : null;
+  const themeBgUrl = /^\/api\/media\/[\w-]+$/.test(bg) || /^\/uploads\/[\w.-]+$/.test(bg) || /^https:\/\/\S+$/.test(bg) ? bg : null;
 
   const invite = await createInvite(campaign.id, session.user.id, {
     label: body.label?.trim() || null,
