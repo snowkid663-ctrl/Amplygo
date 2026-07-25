@@ -18,6 +18,7 @@ under `features/` so ideas are captured and organized **before** implementation.
 | Campaign Embeds (iframe join widget) | shipped (basic) | [features/embeds.md](features/embeds.md) |
 | Creator Badges (rarity + gamified gallery) | in progress | [features/badges.md](features/badges.md) |
 | Shareable Results (growth loop) | shipped (MVP) | [features/shareable-results.md](features/shareable-results.md) |
+| Campaign creation (multi-select targeting, rules toggle, product assets) | shipped (MVP) | [features/campaign-creation.md](features/campaign-creation.md) |
 | Campaign analytics (company dashboard, grouped metrics + AI insights) | shipped (MVP) | [features/campaign-analytics.md](features/campaign-analytics.md) |
 | Creator profile (performance panel) | shipped (MVP) | [features/creator-profile.md](features/creator-profile.md) |
 | Profile media (photo, banner, reposition) | shipped | [features/profile-media.md](features/profile-media.md) |

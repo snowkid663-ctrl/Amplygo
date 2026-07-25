@@ -15,7 +15,7 @@ import ShareResults from "@/components/ShareResults";
 import { formatCents, convertCents } from "@/lib/money";
 import { campaignMetrics } from "@/lib/demoMetrics";
 import { campaignStatusTone, submissionStatusTone, formatDate, formatNumber } from "@/lib/format";
-import { PLATFORM_LABEL } from "@/lib/types";
+import { PLATFORM_LABEL, type Platform, type ProductMediaItem, type AttachmentItem } from "@/lib/types";
 import PlatformIcon from "@/components/PlatformIcon";
 import CompanyNav from "@/components/CompanyNav";
 import { Card } from "@/components/ui/Card";
@@ -82,6 +82,10 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
   const submissionByParticipation = new Map(submissions.map((s) => [s.participationId, s]));
   const rulesChecklist: string[] = JSON.parse(campaign.rulesChecklist || "[]");
   const pct = campaign.budgetCents > 0 ? Math.min(100, (campaign.spentCents / campaign.budgetCents) * 100) : 0;
+
+  const platformList = (campaign.platforms ? campaign.platforms.split(",").filter(Boolean) : [campaign.platform]) as Platform[];
+  const productMedia: ProductMediaItem[] = JSON.parse(campaign.productMedia || "[]");
+  const attachments: AttachmentItem[] = JSON.parse(campaign.attachments || "[]");
 
   // Resolve every involved creator's name once, then look up synchronously.
   const creatorIds = Array.from(new Set([...participations, ...submissions].map((r) => r.creatorId)));
@@ -201,8 +205,12 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <Badge tone={campaignStatusTone(campaign.status)}>{campaign.status}</Badge>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-dim)" }}>
-                <PlatformIcon platform={campaign.platform} size={15} />
-                {PLATFORM_LABEL[campaign.platform]} · {campaign.language} · {campaign.country} ·{" "}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                  {platformList.map((p) => (
+                    <PlatformIcon key={p} platform={p} size={15} />
+                  ))}
+                </span>
+                {platformList.map((p) => PLATFORM_LABEL[p]).join(", ")} · {campaign.language} · {campaign.country} ·{" "}
                 {campaign.endDate ? `Ends ${formatDate(campaign.endDate)}` : "No end date"}
               </span>
             </div>
@@ -295,6 +303,34 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
           <Metric label="Returning creators" value={`${m.creatorMetrics.returningPct}%`} />
           <Metric label="Creator growth" value={`+${m.creatorMetrics.growthPct}%`} delta={m.creatorMetrics.growthPct} />
         </MetricSection>
+
+        {/* Product assets */}
+        {(productMedia.length > 0 || attachments.length > 0) && (
+          <Panel title="Product assets">
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+              {productMedia.length > 0 && (
+                <div className="asset-grid">
+                  {productMedia.map((m, i) =>
+                    m.type === "video" ? (
+                      <a key={i} href={m.url} target="_blank" rel="noreferrer" className="asset-tile">🎬</a>
+                    ) : (
+                      <a key={i} href={m.url} target="_blank" rel="noreferrer" className="asset-tile" style={{ backgroundImage: `url(${m.url})` }} />
+                    )
+                  )}
+                </div>
+              )}
+              {attachments.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {attachments.map((a, i) => (
+                    <a key={i} href={a.url} target="_blank" rel="noreferrer" className="file-row" style={{ textDecoration: "none", color: "var(--text)" }}>
+                      <span>📎</span> {a.name}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Panel>
+        )}
 
         {/* Invite creators */}
         <Panel title="Invite creators">

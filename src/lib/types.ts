@@ -79,8 +79,20 @@ export interface CampaignRow {
   rulesExtra: string | null;
   status: CampaignStatus;
   shareToken: string | null;
+  platforms: string | null; // CSV of platforms (primary stays in `platform`)
+  productMedia: string | null; // JSON: { url: string; type: "image" | "video" | "gif" }[]
+  attachments: string | null; // JSON: { url: string; name: string }[]
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProductMediaItem {
+  url: string;
+  type: "image" | "video" | "gif";
+}
+export interface AttachmentItem {
+  url: string;
+  name: string;
 }
 
 export type ParticipationStatus = "APPROVED" | "PENDING" | "REJECTED";

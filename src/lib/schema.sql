@@ -164,3 +164,10 @@ CREATE TABLE IF NOT EXISTS media (
   data bytea NOT NULL,
   "createdAt" text NOT NULL DEFAULT (now()::text)
 );
+
+-- Multi-select targeting + product assets on campaigns.
+-- `platform` stays the primary (first) platform for all existing logic; the
+-- full set + languages/countries live as CSV, product media & files as JSON.
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS platforms text;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS "productMedia" text;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS attachments text;

@@ -33,36 +33,57 @@ export async function POST(req: Request) {
     description,
     brand,
     category,
-    platform,
-    language,
-    country,
+    platforms,
+    languages,
+    countries,
     cpm,
     budget,
     maxCreators,
     endDate,
     rulesChecklist,
     rulesExtra,
+    productMedia,
+    attachments,
     publish,
   } = body as {
     name: string;
     description: string;
     brand: string;
     category: string;
-    platform: Platform;
-    language: string;
-    country: string;
+    platforms: Platform[];
+    languages: string[];
+    countries: string[];
     cpm: number;
     budget: number;
     maxCreators: number | null;
     endDate: string | null;
     rulesChecklist: string[];
     rulesExtra: string | null;
+    productMedia: { url: string; type: string }[];
+    attachments: { url: string; name: string }[];
     publish: boolean;
   };
 
-  if (!name?.trim() || !description?.trim() || !brand?.trim() || !category || !platform) {
-    return NextResponse.json({ error: "Please fill in all required fields" }, { status: 400 });
+  const VALID_PLATFORMS: Platform[] = ["TIKTOK", "YOUTUBE_SHORTS", "INSTAGRAM_REELS"];
+  const platformList = (Array.isArray(platforms) ? platforms : []).filter((p) => VALID_PLATFORMS.includes(p));
+  const primaryPlatform = platformList[0];
+
+  if (!name?.trim() || !description?.trim() || !brand?.trim() || !category || !primaryPlatform) {
+    return NextResponse.json({ error: "Please fill in all required fields (and pick at least one platform)" }, { status: 400 });
   }
+
+  const langList = (Array.isArray(languages) ? languages : []).map((s) => String(s).trim()).filter(Boolean);
+  const countryList = (Array.isArray(countries) ? countries : []).map((s) => String(s).trim()).filter(Boolean);
+
+  // Only accept media/attachment URLs we produced (/api/media/<id>) or https.
+  const okUrl = (u: unknown) => typeof u === "string" && (/^\/api\/media\/[\w-]+$/.test(u) || /^https:\/\/\S+$/.test(u));
+  const cleanMedia = (Array.isArray(productMedia) ? productMedia : [])
+    .filter((m) => m && okUrl(m.url) && ["image", "video", "gif"].includes(m.type))
+    .slice(0, 12);
+  const cleanAttachments = (Array.isArray(attachments) ? attachments : [])
+    .filter((a) => a && okUrl(a.url) && typeof a.name === "string")
+    .map((a) => ({ url: a.url, name: String(a.name).slice(0, 120) }))
+    .slice(0, 12);
   const cpmCents = Math.round(Number(cpm) * 100);
   const budgetCents = Math.round(Number(budget) * 100);
   if (!cpmCents || cpmCents <= 0) return NextResponse.json({ error: "CPM must be greater than 0" }, { status: 400 });
@@ -85,15 +106,18 @@ export async function POST(req: Request) {
     description: description.trim(),
     brand: brand.trim(),
     category,
-    platform,
-    language: language || "English",
-    country: country || "Worldwide",
+    platform: primaryPlatform,
+    platforms: platformList.join(","),
+    language: langList.length ? langList.join(", ") : "English",
+    country: countryList.length ? countryList.join(", ") : "Worldwide",
     cpmCents,
     budgetCents,
     maxCreators: maxCreators ? Number(maxCreators) : null,
     endDate: endDate || null,
     rulesChecklist: rulesChecklist ?? [],
     rulesExtra: rulesExtra?.trim() || null,
+    productMedia: cleanMedia.length ? JSON.stringify(cleanMedia) : null,
+    attachments: cleanAttachments.length ? JSON.stringify(cleanAttachments) : null,
     status,
   });
 

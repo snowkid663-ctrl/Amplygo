@@ -224,18 +224,30 @@ export interface NewCampaignInput {
   rulesChecklist: string[];
   rulesExtra: string | null;
   status: CampaignStatus;
+  platforms?: string | null;
+  productMedia?: string | null;
+  attachments?: string | null;
 }
 
 export async function createCampaign(input: NewCampaignInput): Promise<CampaignRow> {
   const id = newId();
   await run(
     `INSERT INTO campaigns
-      (id, "companyId", name, description, brand, category, platform, language, country,
-       "cpmCents", "budgetCents", "maxCreators", "endDate", "rulesChecklist", "rulesExtra", status)
+      (id, "companyId", name, description, brand, category, platform, platforms, language, country,
+       "cpmCents", "budgetCents", "maxCreators", "endDate", "rulesChecklist", "rulesExtra",
+       "productMedia", attachments, status)
      VALUES
-      ($id, $companyId, $name, $description, $brand, $category, $platform, $language, $country,
-       $cpmCents, $budgetCents, $maxCreators, $endDate, $rulesChecklist, $rulesExtra, $status)`,
-    { id, ...input, rulesChecklist: JSON.stringify(input.rulesChecklist) }
+      ($id, $companyId, $name, $description, $brand, $category, $platform, $platforms, $language, $country,
+       $cpmCents, $budgetCents, $maxCreators, $endDate, $rulesChecklist, $rulesExtra,
+       $productMedia, $attachments, $status)`,
+    {
+      id,
+      ...input,
+      rulesChecklist: JSON.stringify(input.rulesChecklist),
+      platforms: input.platforms ?? null,
+      productMedia: input.productMedia ?? null,
+      attachments: input.attachments ?? null,
+    }
   );
   return (await getCampaignById(id))!;
 }
