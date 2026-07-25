@@ -31,9 +31,17 @@ export default function CampaignStatusActions({ campaignId, status }: { campaign
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       {error && <span style={{ fontSize: 12, color: "var(--red)" }}>{error}</span>}
       {status === "DRAFT" && (
-        <Button small onClick={() => setStatus("ACTIVE")} disabled={loading}>
-          Publish
+        <Button small onClick={() => setStatus("PENDING")} disabled={loading}>
+          Submit for review
         </Button>
+      )}
+      {status === "PENDING" && (
+        <>
+          <span style={{ fontSize: 12, color: "var(--amber)" }}>Awaiting admin review</span>
+          <Button small variant="secondary" onClick={() => setStatus("DRAFT")} disabled={loading}>
+            Withdraw
+          </Button>
+        </>
       )}
       {status === "ACTIVE" && (
         <Button small variant="secondary" onClick={() => setStatus("PAUSED")} disabled={loading}>

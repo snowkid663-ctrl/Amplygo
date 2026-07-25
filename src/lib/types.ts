@@ -2,7 +2,7 @@ export type Role = "COMPANY" | "CREATOR" | "ADMIN";
 export type Currency = "USD" | "EUR" | "BRL";
 export type CompanyStatus = "PENDING" | "APPROVED" | "SUSPENDED" | "REJECTED";
 export type Platform = "TIKTOK" | "YOUTUBE_SHORTS" | "INSTAGRAM_REELS";
-export type CampaignStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
+export type CampaignStatus = "DRAFT" | "PENDING" | "ACTIVE" | "PAUSED" | "ENDED";
 export type SubmissionStatus = "PENDING" | "APPROVED" | "REJECTED" | "FLAGGED";
 export type PayoutMethod = "PIX" | "PAYPAL";
 export type PayoutStatus = "PENDING" | "PAID";
@@ -76,16 +76,37 @@ export interface CampaignRow {
   rulesChecklist: string;
   rulesExtra: string | null;
   status: CampaignStatus;
+  shareToken: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type ParticipationStatus = "APPROVED" | "PENDING" | "REJECTED";
 
 export interface ParticipationRow {
   id: string;
   campaignId: string;
   creatorId: string;
   rulesAccepted: number;
+  status: ParticipationStatus;
+  inviteId: string | null;
+  ref: string | null;
   joinedAt: string;
+}
+
+export interface CampaignInviteRow {
+  id: string;
+  campaignId: string;
+  token: string;
+  label: string | null;
+  requireApproval: number;
+  maxUses: number | null;
+  uses: number;
+  clicks: number;
+  expiresAt: string | null;
+  createdBy: string | null;
+  active: number;
+  createdAt: string;
 }
 
 export interface SubmissionRow {

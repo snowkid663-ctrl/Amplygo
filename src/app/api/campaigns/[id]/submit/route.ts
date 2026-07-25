@@ -6,6 +6,7 @@ import {
   getParticipation,
   getSubmissionByParticipation,
   createSubmission,
+  listSocialAccounts,
 } from "@/lib/data";
 import type { Platform } from "@/lib/types";
 
@@ -21,6 +22,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const participation = await getParticipation(campaign.id, creator.id);
   if (!participation) {
     return NextResponse.json({ error: "Join this campaign before submitting content." }, { status: 400 });
+  }
+  if (participation.status !== "APPROVED") {
+    return NextResponse.json({ error: "Your request to join is still pending the company's approval." }, { status: 400 });
+  }
+  const accounts = await listSocialAccounts(creator.id);
+  if (!accounts.some((a) => a.platform === campaign.platform)) {
+    return NextResponse.json(
+      { error: `Connect your ${campaign.platform.replace("_", " ")} account in Settings before submitting.` },
+      { status: 400 }
+    );
   }
   if (await getSubmissionByParticipation(participation.id)) {
     return NextResponse.json({ error: "You already submitted content for this campaign." }, { status: 400 });

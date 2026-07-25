@@ -68,21 +68,15 @@ export async function POST(req: Request) {
   if (!cpmCents || cpmCents <= 0) return NextResponse.json({ error: "CPM must be greater than 0" }, { status: 400 });
   if (!budgetCents || budgetCents <= 0) return NextResponse.json({ error: "Budget must be greater than 0" }, { status: 400 });
 
-  const status: CampaignStatus = publish ? "ACTIVE" : "DRAFT";
+  // Publishing submits the campaign for admin review (PENDING). Only after an
+  // admin approves does it go ACTIVE and become visible to creators.
+  const status: CampaignStatus = publish ? "PENDING" : "DRAFT";
 
-  if (publish) {
-    if (company.status !== "APPROVED") {
-      return NextResponse.json(
-        { error: "Your company must be approved by an admin before publishing campaigns." },
-        { status: 403 }
-      );
-    }
-    if (company.balanceCents < budgetCents) {
-      return NextResponse.json(
-        { error: "Insufficient balance. Add funds before publishing a campaign with this budget." },
-        { status: 400 }
-      );
-    }
+  if (publish && company.balanceCents < budgetCents) {
+    return NextResponse.json(
+      { error: "Insufficient balance. Add funds before submitting a campaign with this budget." },
+      { status: 400 }
+    );
   }
 
   const campaign = await createCampaign({

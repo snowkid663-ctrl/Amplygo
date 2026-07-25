@@ -64,10 +64,13 @@ CREATE TABLE IF NOT EXISTS campaigns (
   "endDate" text,
   "rulesChecklist" text NOT NULL,
   "rulesExtra" text,
-  status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','ACTIVE','PAUSED','ENDED')),
+  status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','PENDING','ACTIVE','PAUSED','ENDED')),
   "createdAt" text NOT NULL DEFAULT (now()::text),
   "updatedAt" text NOT NULL DEFAULT (now()::text)
 );
+-- Allow the PENDING (awaiting admin review) status on existing databases.
+ALTER TABLE campaigns DROP CONSTRAINT IF EXISTS campaigns_status_check;
+ALTER TABLE campaigns ADD CONSTRAINT campaigns_status_check CHECK (status IN ('DRAFT','PENDING','ACTIVE','PAUSED','ENDED'));
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_targeting ON campaigns(platform, language, country);
 
@@ -108,6 +111,31 @@ CREATE TABLE IF NOT EXISTS balance_transactions (
   reason text NOT NULL,
   "createdAt" text NOT NULL DEFAULT (now()::text)
 );
+
+CREATE TABLE IF NOT EXISTS campaign_invites (
+  id text PRIMARY KEY,
+  "campaignId" text NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  token text UNIQUE NOT NULL,
+  label text,
+  "requireApproval" integer NOT NULL DEFAULT 0,
+  "maxUses" integer,
+  uses integer NOT NULL DEFAULT 0,
+  clicks integer NOT NULL DEFAULT 0,
+  "expiresAt" text,
+  "createdBy" text REFERENCES users(id) ON DELETE SET NULL,
+  active integer NOT NULL DEFAULT 1,
+  "createdAt" text NOT NULL DEFAULT (now()::text)
+);
+CREATE INDEX IF NOT EXISTS idx_invites_campaign ON campaign_invites("campaignId");
+
+-- Public "share results" token per campaign (nullable until enabled).
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS "shareToken" text;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaigns_share ON campaigns("shareToken");
+
+-- Attribution + approval columns on participations (added for existing dbs too).
+ALTER TABLE participations ADD COLUMN IF NOT EXISTS "inviteId" text;
+ALTER TABLE participations ADD COLUMN IF NOT EXISTS ref text;
+ALTER TABLE participations ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'APPROVED';
 
 CREATE TABLE IF NOT EXISTS payouts (
   id text PRIMARY KEY,

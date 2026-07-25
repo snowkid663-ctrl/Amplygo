@@ -6,7 +6,7 @@ import { signIn, getProviders } from "next-auth/react";
 import Link from "next/link";
 import { Field, Input } from "@/components/ui/Field";
 import BrandLogo from "@/components/BrandLogo";
-import AuthBackground from "@/components/AuthBackground";
+import NetworkBackground from "@/components/NetworkBackground";
 import PlatformIcon from "@/components/PlatformIcon";
 import VideoTile from "@/components/VideoTile";
 
@@ -83,7 +83,11 @@ function AuthForm() {
       const sessionRes = await fetch("/api/auth/session");
       const session = await sessionRes.json();
       const userRole = session?.user?.role;
-      if (userRole === "COMPANY") router.push("/company/dashboard");
+      // Return to where the user came from (e.g. an /invite link) if provided.
+      const callbackUrl = params.get("callbackUrl");
+      if (callbackUrl && callbackUrl.startsWith("/")) {
+        router.push(callbackUrl);
+      } else if (userRole === "COMPANY") router.push("/company/dashboard");
       else if (userRole === "CREATOR") router.push("/creator/dashboard");
       else if (userRole === "ADMIN") router.push("/admin/dashboard");
       else router.push("/");
@@ -97,7 +101,7 @@ function AuthForm() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <AuthBackground />
+      <NetworkBackground />
       <div style={{ padding: "20px 32px" }}>
         <Link href="/" style={{ display: "inline-block" }}>
           <BrandLogo height={30} />

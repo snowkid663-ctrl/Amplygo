@@ -1,5 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { run, get, all, newId } from "./db";
 import { splitPayment, convertCents } from "./money";
+import type { CreatorBadgeStats } from "./badges";
 import type {
   UserRow,
   CompanyRow,
@@ -7,6 +9,8 @@ import type {
   SocialAccountRow,
   CampaignRow,
   ParticipationRow,
+  ParticipationStatus,
+  CampaignInviteRow,
   SubmissionRow,
   PayoutRow,
   Role,
@@ -57,7 +61,11 @@ export function updateUserPassword(id: string, passwordHash: string): Promise<vo
 
 export async function createCompany(input: { userId: string; companyName: string }): Promise<CompanyRow> {
   const id = newId();
-  await run(`INSERT INTO companies (id, "userId", "companyName") VALUES ($id, $userId, $companyName)`, { id, ...input });
+  // Companies are auto-approved on sign-up; admin review moved to the campaign level.
+  await run(`INSERT INTO companies (id, "userId", "companyName", status) VALUES ($id, $userId, $companyName, 'APPROVED')`, {
+    id,
+    ...input,
+  });
   return (await get<CompanyRow>(`SELECT * FROM companies WHERE id = $id`, { id }))!;
 }
 
@@ -236,6 +244,24 @@ export function listOpenCampaignsForCreator(): Promise<CampaignRow[]> {
   return all<CampaignRow>(`SELECT * FROM campaigns WHERE status = 'ACTIVE' ORDER BY "createdAt" DESC`);
 }
 
+export function listCampaigns(status?: CampaignStatus): Promise<CampaignRow[]> {
+  if (status) return all<CampaignRow>(`SELECT * FROM campaigns WHERE status = $status ORDER BY "createdAt" DESC`, { status });
+  return all<CampaignRow>(`SELECT * FROM campaigns ORDER BY "createdAt" DESC`);
+}
+
+export function getCampaignByShareToken(token: string): Promise<CampaignRow | undefined> {
+  return get<CampaignRow>(`SELECT * FROM campaigns WHERE "shareToken" = $token`, { token });
+}
+
+/** Returns the campaign's public share token, generating one on first use. */
+export async function ensureCampaignShareToken(id: string): Promise<string> {
+  const c = await getCampaignById(id);
+  if (c?.shareToken) return c.shareToken;
+  const token = newToken();
+  await run(`UPDATE campaigns SET "shareToken" = $token WHERE id = $id`, { id, token });
+  return token;
+}
+
 export function setCampaignStatus(id: string, status: CampaignStatus): Promise<void> {
   return run(`UPDATE campaigns SET status = $status, "updatedAt" = now()::text WHERE id = $id`, { id, status });
 }
@@ -267,13 +293,85 @@ export function getParticipationById(id: string): Promise<ParticipationRow | und
   return get<ParticipationRow>(`SELECT * FROM participations WHERE id = $id`, { id });
 }
 
-export async function joinCampaign(campaignId: string, creatorId: string): Promise<ParticipationRow> {
+export async function joinCampaign(
+  campaignId: string,
+  creatorId: string,
+  attribution?: { inviteId?: string | null; ref?: string | null; status?: ParticipationStatus }
+): Promise<ParticipationRow> {
   const id = newId();
   await run(
-    `INSERT INTO participations (id, "campaignId", "creatorId", "rulesAccepted") VALUES ($id, $campaignId, $creatorId, 1)`,
-    { id, campaignId, creatorId }
+    `INSERT INTO participations (id, "campaignId", "creatorId", "rulesAccepted", "inviteId", ref, status)
+     VALUES ($id, $campaignId, $creatorId, 1, $inviteId, $ref, $status)`,
+    {
+      id,
+      campaignId,
+      creatorId,
+      inviteId: attribution?.inviteId ?? null,
+      ref: attribution?.ref ?? null,
+      status: attribution?.status ?? "APPROVED",
+    }
   );
   return (await getParticipationById(id))!;
+}
+
+export function setParticipationStatus(id: string, status: ParticipationStatus): Promise<void> {
+  return run(`UPDATE participations SET status = $status WHERE id = $id`, { id, status });
+}
+
+// ---------- Campaign invites ----------
+
+function newToken(): string {
+  return randomBytes(6).toString("base64url"); // ~8 url-safe chars
+}
+
+export async function createInvite(
+  campaignId: string,
+  createdBy: string,
+  input: { label: string | null; requireApproval: boolean; maxUses: number | null; expiresAt: string | null }
+): Promise<CampaignInviteRow> {
+  const id = newId();
+  const token = newToken();
+  await run(
+    `INSERT INTO campaign_invites (id, "campaignId", token, label, "requireApproval", "maxUses", "expiresAt", "createdBy")
+     VALUES ($id, $campaignId, $token, $label, $requireApproval, $maxUses, $expiresAt, $createdBy)`,
+    {
+      id,
+      campaignId,
+      token,
+      label: input.label,
+      requireApproval: input.requireApproval ? 1 : 0,
+      maxUses: input.maxUses,
+      expiresAt: input.expiresAt,
+      createdBy,
+    }
+  );
+  return (await get<CampaignInviteRow>(`SELECT * FROM campaign_invites WHERE id = $id`, { id }))!;
+}
+
+export function getInviteByToken(token: string): Promise<CampaignInviteRow | undefined> {
+  return get<CampaignInviteRow>(`SELECT * FROM campaign_invites WHERE token = $token`, { token });
+}
+
+export function getInviteById(id: string): Promise<CampaignInviteRow | undefined> {
+  return get<CampaignInviteRow>(`SELECT * FROM campaign_invites WHERE id = $id`, { id });
+}
+
+export function listInvitesByCampaign(campaignId: string): Promise<CampaignInviteRow[]> {
+  return all<CampaignInviteRow>(`SELECT * FROM campaign_invites WHERE "campaignId" = $campaignId ORDER BY "createdAt" DESC`, {
+    campaignId,
+  });
+}
+
+export function revokeInvite(id: string): Promise<void> {
+  return run(`UPDATE campaign_invites SET active = 0 WHERE id = $id`, { id });
+}
+
+export function incrementInviteClicks(id: string): Promise<void> {
+  return run(`UPDATE campaign_invites SET clicks = clicks + 1 WHERE id = $id`, { id });
+}
+
+export function incrementInviteUses(id: string): Promise<void> {
+  return run(`UPDATE campaign_invites SET uses = uses + 1 WHERE id = $id`, { id });
 }
 
 export function listParticipationsByCreator(creatorId: string): Promise<ParticipationRow[]> {
@@ -419,6 +517,74 @@ export async function requestPayout(
     { id, creatorId, amountCents, currency, method }
   );
   return (await get<PayoutRow>(`SELECT * FROM payouts WHERE id = $id`, { id }))!;
+}
+
+// ---------- Creator badge stats ----------
+
+export async function creatorBadgeStats(creatorId: string): Promise<CreatorBadgeStats> {
+  const subs = await all<any>(
+    `SELECT s.status, s."viewsCount" as views, s."grossCents" as gross, s."creatorNetCents" as net,
+            s.platform, s."publishedAt" as published, s."participationId" as pid,
+            co.currency as cur, c."companyId" as "companyId"
+       FROM submissions s
+       JOIN campaigns c ON c.id = s."campaignId"
+       JOIN companies co ON co.id = c."companyId"
+      WHERE s."creatorId" = $creatorId`,
+    { creatorId }
+  );
+  const parts = await all<{ id: string; joinedAt: string }>(
+    `SELECT id, "joinedAt" FROM participations WHERE "creatorId" = $creatorId`,
+    { creatorId }
+  );
+  const joinedRow = await get<{ joined: string }>(
+    `SELECT u."createdAt" as joined FROM creators cr JOIN users u ON u.id = cr."userId" WHERE cr.id = $creatorId`,
+    { creatorId }
+  );
+
+  const approved = subs.filter((r) => r.status === "APPROVED");
+  const submitted = subs.filter((r) => r.status === "APPROVED" || r.status === "REJECTED");
+  const views = approved.map((r) => Number(r.views ?? 0));
+  const avgViews = views.length ? Math.round(views.reduce((a, b) => a + b, 0) / views.length) : 0;
+  const maxViews = views.reduce((m, v) => Math.max(m, v), 0);
+  const grossUsdCents = approved.reduce((a, r) => a + convertCents(Number(r.gross ?? 0), r.cur ?? "USD", "USD"), 0);
+  const netUsdCents = approved.reduce((a, r) => a + convertCents(Number(r.net ?? 0), r.cur ?? "USD", "USD"), 0);
+  const distinctCompanies = new Set(approved.map((r) => r.companyId)).size;
+
+  const joinMap = new Map(parts.map((p) => [p.id, p.joinedAt]));
+  const gaps: number[] = [];
+  for (const r of approved) {
+    const j = joinMap.get(r.pid);
+    if (j && r.published) {
+      const g = (new Date(r.published).getTime() - new Date(j).getTime()) / 3600000;
+      if (!Number.isNaN(g) && g >= 0) gaps.push(g);
+    }
+  }
+  const avgPublishGapHours = gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : null;
+
+  const platform: CreatorBadgeStats["platform"] = {
+    TIKTOK: { n: 0, avgViews: 0 },
+    YOUTUBE_SHORTS: { n: 0, avgViews: 0 },
+    INSTAGRAM_REELS: { n: 0, avgViews: 0 },
+  };
+  (Object.keys(platform) as (keyof typeof platform)[]).forEach((p) => {
+    const rows = approved.filter((r) => r.platform === p);
+    const v = rows.map((r) => Number(r.views ?? 0));
+    platform[p] = { n: rows.length, avgViews: v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0 };
+  });
+
+  return {
+    approvedCount: approved.length,
+    submittedCount: submitted.length,
+    participationCount: parts.length,
+    avgViews,
+    maxViews,
+    grossUsdCents,
+    netUsdCents,
+    distinctCompanies,
+    joinedAt: joinedRow?.joined ?? null,
+    avgPublishGapHours,
+    platform,
+  };
 }
 
 // ---------- Admin aggregates ----------

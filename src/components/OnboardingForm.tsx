@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Field, Input } from "@/components/ui/Field";
 import BrandLogo from "@/components/BrandLogo";
-import AuthBackground from "@/components/AuthBackground";
+import NetworkBackground from "@/components/NetworkBackground";
 
 export default function OnboardingForm({ email, name }: { email: string; name: string }) {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function OnboardingForm({ email, name }: { email: string; name: s
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <AuthBackground />
+      <NetworkBackground />
       <div style={{ padding: "20px 32px" }}>
         <BrandLogo height={30} />
       </div>

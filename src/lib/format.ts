@@ -3,6 +3,7 @@ import type { CampaignStatus, SubmissionStatus, CompanyStatus, PayoutStatus } fr
 export function campaignStatusTone(status: CampaignStatus) {
   switch (status) {
     case "ACTIVE": return "green" as const;
+    case "PENDING": return "amber" as const;
     case "PAUSED": return "amber" as const;
     case "ENDED": return "neutral" as const;
     default: return "neutral" as const;

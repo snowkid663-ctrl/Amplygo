@@ -7,7 +7,11 @@ import {
   listSubmissionsByCampaign,
   getCreatorById,
   countParticipants,
+  listInvitesByCampaign,
 } from "@/lib/data";
+import CampaignInviteManager from "@/components/CampaignInviteManager";
+import JoinRequestActions from "@/components/JoinRequestActions";
+import ShareResults from "@/components/ShareResults";
 import { formatCents, convertCents } from "@/lib/money";
 import { campaignMetrics } from "@/lib/demoMetrics";
 import { campaignStatusTone, submissionStatusTone, formatDate, formatNumber } from "@/lib/format";
@@ -44,10 +48,12 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
   if (!campaign || campaign.companyId !== company.id) notFound();
 
   const cur = company.currency;
-  const [participations, submissions] = await Promise.all([
+  const [participations, submissions, invites] = await Promise.all([
     listParticipationsByCampaign(campaign.id),
     listSubmissionsByCampaign(campaign.id),
+    listInvitesByCampaign(campaign.id),
   ]);
+  const pendingRequests = participations.filter((p) => p.status === "PENDING");
   const submissionByParticipation = new Map(submissions.map((s) => [s.participationId, s]));
   const rulesChecklist: string[] = JSON.parse(campaign.rulesChecklist || "[]");
   const pct = campaign.budgetCents > 0 ? Math.min(100, (campaign.spentCents / campaign.budgetCents) * 100) : 0;
@@ -92,7 +98,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
   const kpi = (label: string, value: React.ReactNode, delta: number, sub?: string) => (
     <div>
       <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{label}</div>
-      <div className="tabular" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>{value}</div>
+      <div className="tabular" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>{value}</div>
       <div style={{ fontSize: 12, marginTop: 4 }} className={delta >= 0 ? "kpi-up" : "kpi-down"}>
         {sub ?? `▲ ${delta}% vs yesterday`}
       </div>
@@ -172,7 +178,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
       title={campaign.name}
       headerRight={<CampaignStatusActions campaignId={campaign.id} status={campaign.status} />}
     >
-      <div className="page-pad">
+      <div className="page-pad dense">
         {/* Hero KPIs */}
         <Card hero style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -187,14 +193,14 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
             {kpi("Revenue", <CountUp to={m.revenueCents} currency={cur} />, m.deltas.revenue)}
             <div>
               <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>Profit</div>
-              <div className="tabular kpi-up" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>
+              <div className="tabular kpi-up" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>
                 +<CountUp to={m.profitCents} currency={cur} />
               </div>
               <div className="kpi-up" style={{ fontSize: 12, marginTop: 4 }}>▲ {m.deltas.profit}% vs last week</div>
             </div>
             <div>
               <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>ROI</div>
-              <div className="tabular" style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>
+              <div className="tabular" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>
                 <CountUp to={m.roi} decimals={1} suffix="x" />
               </div>
               <div style={{ fontSize: 12, marginTop: 4, color: "var(--text-dim)" }}>Target: 2.5x</div>
@@ -215,11 +221,52 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
           </div>
         </Card>
 
+        {/* Invite creators */}
+        <Panel title="Invite creators">
+          <div style={{ padding: 16 }}>
+            <CampaignInviteManager campaignId={campaign.id} invites={invites} />
+          </div>
+        </Panel>
+
+        {/* Share results publicly */}
+        <Panel title="Share results">
+          <div style={{ padding: 16 }}>
+            <ShareResults campaignId={campaign.id} token={campaign.shareToken} />
+          </div>
+        </Panel>
+
+        {/* Pending join requests (from approval-required invite links) */}
+        {pendingRequests.length > 0 && (
+          <Panel title={`Join requests (${pendingRequests.length})`}>
+            {pendingRequests.map((p, i) => (
+              <div
+                key={p.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 20px",
+                  borderTop: i === 0 ? "none" : "1px solid var(--hairline)",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{nameOf(p.creatorId)}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-dimmer)" }}>
+                    Requested {formatDate(p.joinedAt)}
+                    {p.ref ? ` · via ${p.ref}` : ""}
+                  </div>
+                </div>
+                <JoinRequestActions participationId={p.id} />
+              </div>
+            ))}
+          </Panel>
+        )}
+
         {/* Chart + funnel */}
         <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
           <Panel title="Revenue over time" right={<Badge tone="neutral" small>30D</Badge>}>
             <div style={{ padding: "18px 8px 8px" }}>
-              <MiniAreaChart data={m.series} height={220} />
+              <MiniAreaChart data={m.series} height={180} />
               <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 14px 0", fontSize: 12, color: "var(--text-dimmer)" }}>
                 <span>30 days ago</span>
                 <span>Today</span>

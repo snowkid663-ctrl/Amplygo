@@ -254,6 +254,7 @@ textarea.input { resize: vertical; }
 }
 .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .page-pad { padding: 28px; display: flex; flex-direction: column; gap: 24px; }
+.page-pad.dense { padding: 22px; gap: 16px; }
 .page-narrow { max-width: 680px; margin: 0 auto; width: 100%; padding: 32px 28px; display: flex; flex-direction: column; gap: 28px; }
 
 .avatar-badge {
@@ -573,6 +574,62 @@ textarea.input { resize: vertical; }
   66% { transform: translate(-42px, 30px) scale(0.92); }
 }
 
+/* ---- Modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: oklch(8% 0.01 264 / 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fadeUp .2s ease both;
+}
+.modal-card {
+  max-width: 94vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 18px;
+  animation: scaleIn .22s cubic-bezier(.2,.8,.2,1) both;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--hairline);
+  position: sticky;
+  top: 0;
+  background: inherit;
+}
+.modal-x {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  transition: background .15s, color .15s;
+}
+.modal-x:hover { background: var(--surface-hover); color: white; }
+
+/* ---- Network field (galaxy of connected nodes) ---- */
+.network-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* 95% near-black; a whisper of mint only near the top so the form pops. */
+  background:
+    radial-gradient(900px circle at 50% -20%, oklch(30% 0.06 165 / 0.14), transparent 55%),
+    #05070a;
+}
+
 /* ---- Auth-page background: drifting grid + slow rotating beam (subtle) ---- */
 .auth-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .auth-bg .grid {
@@ -618,7 +675,10 @@ textarea.input { resize: vertical; }
 @media (max-width: 900px) { .auth-float { display: none; } }
 
 /* Auth card: logo chip, top light, social buttons */
-.auth-card { position: relative; }
+.auth-card {
+  position: relative;
+  box-shadow: 0 44px 120px oklch(0% 0 0 / 0.75), 0 8px 30px oklch(0% 0 0 / 0.5), inset 0 1px 0 oklch(100% 0 0 / 0.08);
+}
 .auth-card::after {
   content: "";
   position: absolute;

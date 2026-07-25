@@ -22,7 +22,7 @@ export default function ConversionFunnel({ stages }: { stages: { label: string; 
             key={s.label}
             style={{
               width: "100%",
-              height: 62,
+              height: 52,
               clipPath: `polygon(${l1}% 0, ${r1}% 0, ${r2}% 100%, ${l2}% 100%)`,
               background: `linear-gradient(135deg, oklch(58% 0.19 ${hue}), oklch(52% 0.17 ${hue + 18}))`,
               display: "flex",
