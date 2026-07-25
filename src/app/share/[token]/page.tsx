@@ -12,6 +12,9 @@ import { formatNumber } from "@/lib/format";
 import { campaignMetrics } from "@/lib/demoMetrics";
 import BrandLogo from "@/components/BrandLogo";
 import NetworkBackground from "@/components/NetworkBackground";
+import CountUp from "@/components/CountUp";
+import MiniAreaChart from "@/components/MiniAreaChart";
+import ConversionFunnel from "@/components/ConversionFunnel";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +70,7 @@ export default async function SharePage({ params }: { params: { token: string } 
             <div style={{ fontSize: 13, color: "var(--text-dim)", fontWeight: 600 }}>{company.companyName} · Campaign results</div>
             <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", margin: "4px 0 18px" }}>{campaign.name}</h1>
             <div className="gradient-text-pink" style={{ fontSize: 68, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>
-              {formatNumber(m.totalViews)}
+              <CountUp to={m.totalViews} startOnView duration={1800} />
             </div>
             <div style={{ fontSize: 15, color: "var(--text-dim)", marginTop: 6 }}>organic views generated</div>
           </div>
@@ -78,6 +81,22 @@ export default async function SharePage({ params }: { params: { token: string } 
             {stat("ROAS", `${m.roi.toFixed(1)}x`)}
             {stat("Sales", formatNumber(m.sales))}
             {stat("Videos", formatNumber(submissions.length))}
+          </div>
+
+          {/* Views over time + funnel */}
+          <div className="fu fu-1 share-charts" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
+            <div className="glass glass-hi" style={{ padding: "18px 18px 10px", borderRadius: 16 }}>
+              <div className="section-label" style={{ marginBottom: 12 }}>Views over time</div>
+              <MiniAreaChart data={m.seriesByRange["30D"]} height={150} />
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 4px 0", fontSize: 11.5, color: "var(--text-dimmer)" }}>
+                <span>30 days ago</span>
+                <span>Today</span>
+              </div>
+            </div>
+            <div className="glass glass-hi" style={{ padding: "18px 18px", borderRadius: 16 }}>
+              <div className="section-label" style={{ marginBottom: 12 }}>Conversion funnel</div>
+              <ConversionFunnel stages={m.funnel} />
+            </div>
           </div>
 
           {/* Top creators */}

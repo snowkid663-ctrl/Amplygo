@@ -178,6 +178,18 @@ export function campaignMetrics(
   const scale = acc > 0 ? revenueCents / acc : 1;
   const series = raw.map((v) => Math.round(v * scale));
 
+  // Daily series for the date-range filter (7 / 30 / 90 days), deterministic.
+  const mkSeries = (n: number) => {
+    const out: number[] = [];
+    let base = Math.max(1, revenueCents / 30);
+    for (let i = 0; i < n; i++) {
+      base *= 0.9 + rng() * 0.28;
+      out.push(Math.max(0, Math.round(base)));
+    }
+    return out;
+  };
+  const seriesByRange: Record<string, number[]> = { "7D": mkSeries(7), "30D": mkSeries(30), "90D": mkSeries(90) };
+
   // Fake latest-sales feed from the top creators.
   const plans: [string, number][] = [
     ["Pro Plan", 4900],
@@ -213,6 +225,7 @@ export function campaignMetrics(
     funnel,
     leaderboard,
     series,
+    seriesByRange,
     feed,
     deltas: { revenue: delta(), profit: delta(), sales: delta() },
     // AmplyGo-specific groups

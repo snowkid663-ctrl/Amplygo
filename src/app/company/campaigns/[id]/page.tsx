@@ -22,7 +22,7 @@ import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import CampaignStatusActions from "@/components/CampaignStatusActions";
 import EmptyState from "@/components/ui/EmptyState";
-import MiniAreaChart from "@/components/MiniAreaChart";
+import RangeAreaChart from "@/components/RangeAreaChart";
 import ConversionFunnel from "@/components/ConversionFunnel";
 import CampaignTabs from "@/components/CampaignTabs";
 import CountUp from "@/components/CountUp";
@@ -223,7 +223,19 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
                 {campaign.endDate ? `Ends ${formatDate(campaign.endDate)}` : "No end date"}
               </span>
             </div>
-            <ShareResults campaignId={campaign.id} token={campaign.shareToken} compact />
+            <ShareResults
+              campaignId={campaign.id}
+              token={campaign.shareToken}
+              compact
+              preview={{
+                companyName: company.companyName,
+                campaignName: campaign.name,
+                totalViews: m.totalViews,
+                revenue: money(m.revenueCents),
+                roas: `${m.roas.toFixed(1)}x`,
+                series: m.seriesByRange["30D"],
+              }}
+            />
           </div>
 
           <div>
@@ -377,13 +389,9 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
 
         {/* Chart + funnel */}
         <div className="resp-collapse" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20 }}>
-          <Panel title="Revenue over time" right={<Badge tone="neutral" small>30D</Badge>}>
-            <div style={{ padding: "18px 8px 8px" }}>
-              <MiniAreaChart data={m.series} height={180} />
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 14px 0", fontSize: 12, color: "var(--text-dimmer)" }}>
-                <span>30 days ago</span>
-                <span>Today</span>
-              </div>
+          <Panel title="Revenue over time">
+            <div style={{ padding: "16px 16px 10px" }}>
+              <RangeAreaChart ranges={m.seriesByRange} currency={cur} height={180} />
             </div>
           </Panel>
           <Panel title="Conversion funnel">

@@ -1,34 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "./ui/Button";
+import Modal from "./Modal";
+import MiniAreaChart from "./MiniAreaChart";
+import { formatNumber } from "@/lib/format";
+
+interface Preview {
+  companyName: string;
+  campaignName: string;
+  totalViews: number;
+  revenue: string;
+  roas: string;
+  series: number[];
+}
 
 export default function ShareResults({
   campaignId,
   token: initial,
   compact = false,
+  preview,
 }: {
   campaignId: string;
   token: string | null;
   compact?: boolean;
+  preview?: Preview;
 }) {
   const [token, setToken] = useState<string | null>(initial);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const url = token ? `${origin}/share/${token}` : "";
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+  const displayUrl = token ? url.replace(/^https?:\/\//, "") : "amplygo.com/share/…";
 
   async function enable() {
     setLoading(true);
@@ -83,28 +88,54 @@ export default function ShareResults({
     </>
   );
 
-  // ---- Compact: a single button in a panel header that reveals a popover ----
+  // Miniature of the public results page.
+  const previewCard = preview && (
+    <div className="share-preview">
+      <div className="share-preview-bar">
+        <span className="dot r" /><span className="dot y" /><span className="dot g" />
+        <div className="share-preview-url">🔒 {displayUrl}</div>
+      </div>
+      <div className="share-preview-body">
+        <div style={{ fontSize: 11, color: "var(--text-dim)", fontWeight: 600 }}>
+          {preview.companyName} · Campaign results
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, margin: "2px 0 10px", letterSpacing: "-0.01em" }}>{preview.campaignName}</div>
+        <div className="gradient-text-pink" style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>
+          {formatNumber(preview.totalViews)}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-dim)", margin: "2px 0 10px" }}>organic views generated</div>
+        <div style={{ opacity: 0.9 }}>
+          <MiniAreaChart data={preview.series} height={70} />
+        </div>
+        <div style={{ display: "flex", gap: 14, marginTop: 10 }}>
+          <div><div className="share-preview-k">Revenue</div><div className="share-preview-v">{preview.revenue}</div></div>
+          <div><div className="share-preview-k">ROAS</div><div className="share-preview-v">{preview.roas}</div></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ---- Compact: a button in the panel header that opens a Stripe-style modal ----
   if (compact) {
     return (
-      <div ref={ref} style={{ position: "relative" }}>
-        <Button
-          small
-          variant="secondary"
-          onClick={async () => {
-            if (!token) await enable();
-            setOpen((o) => !o);
-          }}
-          disabled={loading}
-        >
-          {loading ? "Creating…" : "↗ Share results"}
-        </Button>
-        {open && token && (
-          <div className="share-popover fu">
-            <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 10 }}>Public results page</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{linkRow}</div>
+      <>
+        <Button small variant="secondary" onClick={() => setOpen(true)}>↗ Share results</Button>
+        <Modal open={open} onClose={() => setOpen(false)} title="Share campaign results" width={560}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+              Create a public page anyone can open — a snapshot of this campaign&apos;s results.
+            </div>
+            {previewCard}
+            {token ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{linkRow}</div>
+            ) : (
+              <Button onClick={enable} disabled={loading}>
+                {loading ? "Creating…" : "Create results link"}
+              </Button>
+            )}
           </div>
-        )}
-      </div>
+        </Modal>
+      </>
     );
   }
 

@@ -33,9 +33,17 @@ topPlatform, today, creatorMetrics, community, insights`. Real values (views,
 spend, creators, videos) are used where present; the rest is deterministic demo
 per campaign id, pending sales attribution (phase 2). Disclaimer stays on-page.
 
+## Date-range chart
+"Revenue over time" is now a Stripe-style chart with a **7D / 30D / 90D**
+switcher (`RangeAreaChart`). Series per range are precomputed server-side
+(`m.seriesByRange`) and toggled client-side.
+
 ## Related changes
-- **Share results** is no longer a standalone card — it's a compact popover in
-  the hero header (`<ShareResults compact />`).
+- **Share results** opens a Stripe-style **modal with a live preview** of the
+  public page (browser-chrome mock, big views number, mini chart, revenue/ROAS)
+  plus the link + copy/X/LinkedIn (`<ShareResults compact preview={…} />`).
+- The public **/share** page got a glow-up: animated count-up hero, a
+  views-over-time chart and a conversion funnel.
 - Company **dashboard** KPI sparklines removed (were visually noisy/buggy); a
   stray duplicate avatar in the header was removed.
 - Account **dropdown** clickability fixed: the topbar is now `sticky` with a
