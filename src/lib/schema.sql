@@ -147,3 +147,11 @@ CREATE TABLE IF NOT EXISTS payouts (
   "createdAt" text NOT NULL DEFAULT (now()::text),
   "paidAt" text
 );
+
+-- Banner vertical focal point (0 = top .. 100 = bottom), so users can reposition.
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS "bannerPos" integer NOT NULL DEFAULT 50;
+ALTER TABLE creators ADD COLUMN IF NOT EXISTS "bannerPos" integer NOT NULL DEFAULT 50;
+
+-- Invite page theming (companies can brand their invite links).
+ALTER TABLE campaign_invites ADD COLUMN IF NOT EXISTS "themeColor" text;
+ALTER TABLE campaign_invites ADD COLUMN IF NOT EXISTS "themeBgUrl" text;

@@ -101,6 +101,10 @@ export function updateCompanyImage(id: string, field: "logoUrl" | "bannerUrl", u
   return run(`UPDATE companies SET "${field}" = $url WHERE id = $id`, { id, url });
 }
 
+export function updateCompanyBannerPos(id: string, pos: number): Promise<void> {
+  return run(`UPDATE companies SET "bannerPos" = $pos WHERE id = $id`, { id, pos });
+}
+
 export async function addCompanyBalance(companyId: string, amountCents: number, reason: string): Promise<void> {
   await run(`UPDATE companies SET "balanceCents" = "balanceCents" + $amountCents WHERE id = $companyId`, {
     companyId,
@@ -140,6 +144,10 @@ export function updateCreatorProfile(
 
 export function updateCreatorImage(id: string, field: "avatarUrl" | "bannerUrl", url: string | null): Promise<void> {
   return run(`UPDATE creators SET "${field}" = $url WHERE id = $id`, { id, url });
+}
+
+export function updateCreatorBannerPos(id: string, pos: number): Promise<void> {
+  return run(`UPDATE creators SET "bannerPos" = $pos WHERE id = $id`, { id, pos });
 }
 
 export function getCreatorById(id: string): Promise<CreatorRow | undefined> {
@@ -327,13 +335,20 @@ function newToken(): string {
 export async function createInvite(
   campaignId: string,
   createdBy: string,
-  input: { label: string | null; requireApproval: boolean; maxUses: number | null; expiresAt: string | null }
+  input: {
+    label: string | null;
+    requireApproval: boolean;
+    maxUses: number | null;
+    expiresAt: string | null;
+    themeColor?: string | null;
+    themeBgUrl?: string | null;
+  }
 ): Promise<CampaignInviteRow> {
   const id = newId();
   const token = newToken();
   await run(
-    `INSERT INTO campaign_invites (id, "campaignId", token, label, "requireApproval", "maxUses", "expiresAt", "createdBy")
-     VALUES ($id, $campaignId, $token, $label, $requireApproval, $maxUses, $expiresAt, $createdBy)`,
+    `INSERT INTO campaign_invites (id, "campaignId", token, label, "requireApproval", "maxUses", "expiresAt", "createdBy", "themeColor", "themeBgUrl")
+     VALUES ($id, $campaignId, $token, $label, $requireApproval, $maxUses, $expiresAt, $createdBy, $themeColor, $themeBgUrl)`,
     {
       id,
       campaignId,
@@ -343,6 +358,8 @@ export async function createInvite(
       maxUses: input.maxUses,
       expiresAt: input.expiresAt,
       createdBy,
+      themeColor: input.themeColor ?? null,
+      themeBgUrl: input.themeBgUrl ?? null,
     }
   );
   return (await get<CampaignInviteRow>(`SELECT * FROM campaign_invites WHERE id = $id`, { id }))!;
@@ -584,6 +601,98 @@ export async function creatorBadgeStats(creatorId: string): Promise<CreatorBadge
     joinedAt: joinedRow?.joined ?? null,
     avgPublishGapHours,
     platform,
+  };
+}
+
+// ---------- Creator public profile (performance panel) ----------
+
+export interface CreatorProfileData {
+  overview: { videos: number; views: number; revenueCents: number; campaigns: number };
+  last30: { videos: number; views: number; revenueCents: number };
+  brands: string[];
+  featured: { videoUrl: string; platform: Platform; views: number }[];
+  tags: string[];
+  country: string | null;
+  insights: string[];
+  joinedAt: string | null;
+}
+
+export async function creatorProfile(creatorId: string, displayCurrency: Currency): Promise<CreatorProfileData> {
+  const rows = await all<any>(
+    `SELECT s.status, s."viewsCount" as views, s."creatorNetCents" as net, s.platform, s."videoUrl" as url,
+            s."publishedAt" as published, s."reviewedAt" as reviewed,
+            co.currency as cur, co."companyName" as company, c.category as category, c.country as country
+       FROM submissions s
+       JOIN campaigns c ON c.id = s."campaignId"
+       JOIN companies co ON co.id = c."companyId"
+      WHERE s."creatorId" = $creatorId
+      ORDER BY s."viewsCount" DESC NULLS LAST`,
+    { creatorId }
+  );
+  const parts = await all<{ status: string }>(`SELECT status FROM participations WHERE "creatorId" = $creatorId`, { creatorId });
+  const joinedRow = await get<{ joined: string }>(
+    `SELECT u."createdAt" as joined FROM creators cr JOIN users u ON u.id = cr."userId" WHERE cr.id = $creatorId`,
+    { creatorId }
+  );
+
+  const approved = rows.filter((r) => r.status === "APPROVED");
+  const num = (v: any) => Number(v ?? 0);
+  const views = approved.reduce((a, r) => a + num(r.views), 0);
+  const revenueCents = approved.reduce((a, r) => a + convertCents(num(r.net), r.cur ?? "USD", displayCurrency), 0);
+  const campaigns = parts.filter((p) => p.status === "APPROVED").length;
+
+  const cutoff = Date.now() - 30 * 86400000;
+  const dateOf = (r: any) => new Date(r.published || r.reviewed || 0).getTime();
+  const recent = approved.filter((r) => dateOf(r) >= cutoff);
+  const last30 = {
+    videos: recent.length,
+    views: recent.reduce((a, r) => a + num(r.views), 0),
+    revenueCents: recent.reduce((a, r) => a + convertCents(num(r.net), r.cur ?? "USD", displayCurrency), 0),
+  };
+
+  const brands = Array.from(new Set(approved.map((r) => r.company).filter(Boolean))).slice(0, 12) as string[];
+  const featured = approved
+    .filter((r) => r.url)
+    .slice(0, 6)
+    .map((r) => ({ videoUrl: r.url as string, platform: r.platform as Platform, views: num(r.views) }));
+
+  const tally = (key: "category" | "country") => {
+    const m = new Map<string, number>();
+    approved.forEach((r) => {
+      if (r[key]) m.set(r[key], (m.get(r[key]) ?? 0) + 1);
+    });
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const tags = tally("category").slice(0, 3).map((e) => e[0]);
+  const country = tally("country")[0]?.[0] ?? null;
+
+  // Heuristic "AI" insights — reads like analysis, computed from real signals.
+  const insights: string[] = [];
+  const approvalRate = rows.length ? approved.length / rows.filter((r) => r.status !== "PENDING").length || 0 : 0;
+  if (last30.videos >= 4) insights.push("Publishes consistently every week.");
+  else if (last30.videos >= 1) insights.push("Active in the last 30 days.");
+  if (tags[0]) insights.push(`Most videos are about ${tags[0]}.`);
+  const catViews = new Map<string, number[]>();
+  approved.forEach((r) => {
+    if (r.category) catViews.set(r.category, [...(catViews.get(r.category) ?? []), num(r.views)]);
+  });
+  const bestCat = [...catViews.entries()]
+    .map(([c, v]) => [c, v.reduce((a, b) => a + b, 0) / v.length] as const)
+    .sort((a, b) => b[1] - a[1])[0];
+  if (bestCat && bestCat[1] >= 50000) insights.push(`Strong performance in ${bestCat[0]} campaigns.`);
+  if (approved.length && views / approved.length >= 100000) insights.push("Reaches large audiences per video.");
+  if (approvalRate >= 0.9 && approved.length >= 3) insights.push("High approval rate across campaigns.");
+  if (brands.length >= 3) insights.push(`Trusted by ${brands.length}+ brands.`);
+
+  return {
+    overview: { videos: approved.length, views, revenueCents, campaigns },
+    last30,
+    brands,
+    featured,
+    tags,
+    country,
+    insights: insights.slice(0, 5),
+    joinedAt: joinedRow?.joined ?? null,
   };
 }
 

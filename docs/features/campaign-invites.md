@@ -1,8 +1,18 @@
 # Campaign Invites
 
-**Status:** shipped (MVP) · referral rewards + QR + per-link labels analytics pending
+**Status:** shipped (MVP) · referral rewards pending
 **Owner:** —
-**Last updated:** 2026-07-24
+**Last updated:** 2026-07-25
+
+### Branding / theming (shipped 2026-07-25)
+Companies can brand each invite link from the create modal:
+- **Accent color** — a swatch palette (validated server-side as `#rrggbb`). Applied
+  to the invite page brand label, estimated-earnings figures, and the primary CTA.
+- **Background image** — uploaded via `POST /api/upload` (auth-gated, returns a
+  `/uploads/...` path); shown full-bleed behind the invite card with a dark
+  overlay (replaces the network background when set).
+- Stored on `campaign_invites.themeColor` / `themeBgUrl`. Server only accepts a
+  hex color and a `/uploads/...` path or `https://` URL.
 
 ### Shipped in MVP
 - Company: create invite links per campaign (label, expiration, max uses,

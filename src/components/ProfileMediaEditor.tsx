@@ -15,19 +15,27 @@ export default function ProfileMediaEditor({
   name,
   avatarUrl,
   bannerUrl,
+  bannerPos = 50,
   avatarShape = "circle",
 }: {
   name: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  bannerPos?: number;
   avatarShape?: "circle" | "rounded";
 }) {
   const router = useRouter();
   const { update } = useSession();
   const avatarInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<"avatar" | "banner" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Reposition state (local until saved).
+  const [repositioning, setRepositioning] = useState(false);
+  const [pos, setPos] = useState(bannerPos);
+  const dragging = useRef(false);
 
   async function upload(kind: "avatar" | "banner", file: File | undefined) {
     if (!file) return;
@@ -56,8 +64,29 @@ export default function ProfileMediaEditor({
       body: JSON.stringify({ kind }),
     });
     setBusy(null);
+    setRepositioning(false);
     router.refresh();
     if (kind === "avatar") await update(); // refresh the topbar avatar
+  }
+
+  function pointerToPos(clientY: number) {
+    const el = bannerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const p = ((clientY - rect.top) / rect.height) * 100;
+    setPos(Math.max(0, Math.min(100, Math.round(p))));
+  }
+
+  async function savePos() {
+    setBusy("banner");
+    const res = await fetch("/api/profile/image", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bannerPos: pos }),
+    });
+    setBusy(null);
+    setRepositioning(false);
+    if (res.ok) router.refresh();
   }
 
   return (
@@ -79,37 +108,72 @@ export default function ProfileMediaEditor({
 
       <div className="profile-media">
         <div
-          className="profile-banner"
-          style={bannerUrl ? { backgroundImage: `url(${bannerUrl})` } : undefined}
+          ref={bannerRef}
+          className={`profile-banner ${repositioning ? "profile-banner-repositioning" : ""}`}
+          style={bannerUrl ? { backgroundImage: `url(${bannerUrl})`, backgroundPosition: `center ${pos}%` } : undefined}
+          onPointerDown={(e) => {
+            if (!repositioning) return;
+            dragging.current = true;
+            (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+            pointerToPos(e.clientY);
+          }}
+          onPointerMove={(e) => {
+            if (repositioning && dragging.current) pointerToPos(e.clientY);
+          }}
+          onPointerUp={() => (dragging.current = false)}
         >
+          {repositioning && <div className="profile-banner-repohint">Drag to reposition</div>}
           <div className="profile-banner-actions">
-            <button type="button" className="media-btn" onClick={() => bannerInput.current?.click()} disabled={busy === "banner"}>
-              {busy === "banner" ? "Uploading…" : bannerUrl ? "Change banner" : "Add banner"}
-            </button>
-            {bannerUrl && (
-              <button type="button" className="media-btn" onClick={() => remove("banner")} disabled={busy === "banner"}>
-                Remove
-              </button>
+            {repositioning ? (
+              <>
+                <button type="button" className="media-btn media-btn-primary" onClick={savePos} disabled={busy === "banner"}>
+                  {busy === "banner" ? "Saving…" : "Save position"}
+                </button>
+                <button type="button" className="media-btn" onClick={() => { setPos(bannerPos); setRepositioning(false); }}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="media-btn" onClick={() => bannerInput.current?.click()} disabled={busy === "banner"}>
+                  {busy === "banner" ? "Uploading…" : bannerUrl ? "Change banner" : "Add banner"}
+                </button>
+                {bannerUrl && (
+                  <button type="button" className="media-btn" onClick={() => setRepositioning(true)}>
+                    Reposition
+                  </button>
+                )}
+                {bannerUrl && (
+                  <button type="button" className="media-btn" onClick={() => remove("banner")} disabled={busy === "banner"}>
+                    Remove
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
 
         <div className="profile-avatar-row">
-          <div
+          <button
+            type="button"
             className={`profile-avatar ${avatarShape === "rounded" ? "profile-avatar-rounded" : ""}`}
             style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
+            onClick={() => avatarInput.current?.click()}
+            disabled={busy === "avatar"}
+            title={avatarUrl ? "Change photo" : "Add photo"}
           >
             {!avatarUrl && <span>{initialsFrom(name)}</span>}
-            <button
-              type="button"
-              className="avatar-camera"
-              title={avatarUrl ? "Change photo" : "Add photo"}
-              onClick={() => avatarInput.current?.click()}
-              disabled={busy === "avatar"}
-            >
-              {busy === "avatar" ? "…" : "📷"}
-            </button>
-          </div>
+            <span className="profile-avatar-overlay">
+              {busy === "avatar" ? (
+                "…"
+              ) : (
+                <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              )}
+            </span>
+          </button>
           <div className="profile-avatar-hint">
             <button type="button" className="media-link" onClick={() => avatarInput.current?.click()} disabled={busy === "avatar"}>
               {avatarUrl ? "Change photo" : "Upload photo"}

@@ -31,6 +31,7 @@ export interface CompanyRow {
   about: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
+  bannerPos: number;
   currency: Currency;
   status: CompanyStatus;
   balanceCents: number;
@@ -44,6 +45,7 @@ export interface CreatorRow {
   bio: string | null;
   avatarUrl: string | null;
   bannerUrl: string | null;
+  bannerPos: number;
   displayCurrency: Currency;
   createdAt: string;
 }
@@ -106,6 +108,8 @@ export interface CampaignInviteRow {
   expiresAt: string | null;
   createdBy: string | null;
   active: number;
+  themeColor: string | null;
+  themeBgUrl: string | null;
   createdAt: string;
 }
 

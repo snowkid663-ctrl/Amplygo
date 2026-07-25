@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { Input, Select } from "./ui/Field";
 import Modal from "./Modal";
 import type { CampaignInviteRow } from "@/lib/types";
+
+const THEME_COLORS = ["#22c55e", "#06b6d4", "#6366f1", "#a855f7", "#ec4899", "#f59e0b", "#ef4444", "#e2e8f0"];
 
 export default function CampaignInviteManager({
   campaignId,
@@ -23,6 +25,23 @@ export default function CampaignInviteManager({
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [panel, setPanel] = useState<{ id: string; token: string; kind: "qr" | "embed" } | null>(null);
+  const [themeColor, setThemeColor] = useState<string | null>(null);
+  const [themeBgUrl, setThemeBgUrl] = useState<string | null>(null);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const bgInput = useRef<HTMLInputElement>(null);
+
+  async function uploadBg(file: File | undefined) {
+    if (!file) return;
+    setUploadingBg(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    setUploadingBg(false);
+    if (res.ok) {
+      const data = await res.json();
+      setThemeBgUrl(data.url);
+    }
+  }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const linkFor = (token: string) => `${origin}/invite/${token}`;
@@ -49,6 +68,8 @@ export default function CampaignInviteManager({
         requireApproval,
         expiresDays: Number(expiresDays) || 0,
         maxUses: maxUses ? Number(maxUses) : null,
+        themeColor,
+        themeBgUrl,
       }),
     });
     setLoading(false);
@@ -57,6 +78,8 @@ export default function CampaignInviteManager({
     setMaxUses("");
     setExpiresDays("0");
     setRequireApproval(false);
+    setThemeColor(null);
+    setThemeBgUrl(null);
     router.refresh();
   }
 
@@ -150,6 +173,57 @@ export default function CampaignInviteManager({
             <input type="checkbox" checked={requireApproval} onChange={(e) => setRequireApproval(e.target.checked)} />
             Require my approval before a creator joins
           </label>
+
+          {/* Branding */}
+          <div className="field">
+            <label>Accent color</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {THEME_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setThemeColor((cur) => (cur === c ? null : c))}
+                  aria-label={`Accent ${c}`}
+                  className="swatch"
+                  style={{
+                    background: c,
+                    outline: themeColor === c ? "2px solid white" : "2px solid transparent",
+                    outlineOffset: 2,
+                  }}
+                />
+              ))}
+              <span style={{ fontSize: 12, color: "var(--text-dimmer)" }}>
+                {themeColor ? "Custom" : "Default (mint)"}
+              </span>
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Background image (optional)</label>
+            <input ref={bgInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={(e) => uploadBg(e.target.files?.[0])} />
+            <div
+              className="invite-bg-preview"
+              style={{
+                backgroundImage: themeBgUrl ? `url(${themeBgUrl})` : undefined,
+                borderColor: themeColor ?? "var(--card-border)",
+              }}
+            >
+              <div className="invite-bg-preview-inner" style={{ background: themeColor ? `${themeColor}22` : undefined }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button small variant="secondary" onClick={() => bgInput.current?.click()} disabled={uploadingBg}>
+                    {uploadingBg ? "Uploading…" : themeBgUrl ? "Replace image" : "Upload image"}
+                  </Button>
+                  {themeBgUrl && (
+                    <Button small variant="secondary" onClick={() => setThemeBgUrl(null)}>Remove</Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-dimmer)", marginTop: 6 }}>
+              Shown behind your invite page. PNG, JPEG, WebP or GIF · up to 5 MB.
+            </div>
+          </div>
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button small variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button small onClick={create} disabled={loading}>{loading ? "Creating…" : "Create link"}</Button>

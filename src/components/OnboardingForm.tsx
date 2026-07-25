@@ -7,7 +7,7 @@ import { Field, Input } from "@/components/ui/Field";
 import BrandLogo from "@/components/BrandLogo";
 import NetworkBackground from "@/components/NetworkBackground";
 
-export default function OnboardingForm({ email, name }: { email: string; name: string }) {
+export default function OnboardingForm({ email, name, next }: { email: string; name: string; next?: string }) {
   const router = useRouter();
   const { update } = useSession();
   const [role, setRole] = useState<"company" | "creator">("creator");
@@ -35,8 +35,13 @@ export default function OnboardingForm({ email, name }: { email: string; name: s
       setLoading(false);
       return;
     }
-    // Refresh the JWT so it now carries the new id + role, then route home.
+    // Refresh the JWT so it now carries the new id + role, then route on.
     await update();
+    // Came from "Continue with YouTube" → link the channel right away.
+    if (role === "creator" && next === "connect-youtube") {
+      window.location.href = "/api/connect/youtube";
+      return;
+    }
     router.replace(role === "company" ? "/company/dashboard" : "/creator/dashboard");
   }
 

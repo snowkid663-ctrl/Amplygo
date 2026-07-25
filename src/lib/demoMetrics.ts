@@ -53,7 +53,8 @@ export function campaignMetrics(
   campaign: CampaignRow,
   submissions: SubmissionRow[],
   creatorName: (id: string) => string,
-  currency: Currency
+  currency: Currency,
+  participantCount?: number
 ) {
   const rng = mulberry32(hashSeed(campaign.id));
   const ctr = 0.06 + rng() * 0.025; // 6.0–8.5%
@@ -69,6 +70,65 @@ export function campaignMetrics(
   const spentCents = campaign.spentCents > 0 ? campaign.spentCents : Math.round(campaign.budgetCents * (0.3 + rng() * 0.4));
   const profitCents = revenueCents - spentCents;
   const roi = spentCents > 0 ? revenueCents / spentCents : 0;
+
+  // ---- Distribution / creator / content / community (AmplyGo-specific) ----
+  const distinctCreators = new Set(submissions.map((s) => s.creatorId)).size;
+  const creators = participantCount || distinctCreators || Math.round(40 + rng() * 140);
+  const videos = submissions.length || Math.round(creators * (1.2 + rng() * 1));
+  const reach = Math.round(totalViews * (0.6 + rng() * 0.2));
+  const shares = Math.round(totalViews * (0.008 + rng() * 0.012));
+  const comments = Math.round(totalViews * (0.004 + rng() * 0.005));
+  const avgViews = videos > 0 ? Math.round(totalViews / videos) : 0;
+  const realBest = submissions.reduce((m, s) => Math.max(m, s.viewsCount ?? 0), 0);
+  const bestVideoViews = realBest > 0 ? realBest : Math.round(avgViews * (3 + rng() * 3));
+  const cpaCents = sales > 0 ? Math.round(spentCents / sales) : 0;
+  const roas = spentCents > 0 ? revenueCents / spentCents : 0;
+  const conversionRatePct = cvr * 100;
+
+  // "Today" pulse
+  const pct = (lo: number, hi: number) => Math.round(lo + rng() * (hi - lo));
+  const today = {
+    views: Math.round(totalViews * (0.06 + rng() * 0.06)),
+    creators: Math.max(1, Math.round(creators * (0.05 + rng() * 0.07))),
+    videos: Math.max(1, Math.round(videos * (0.04 + rng() * 0.06))),
+    revenueCents: Math.round(revenueCents * (0.05 + rng() * 0.06)),
+    viewsPct: pct(6, 24),
+    creatorsPct: pct(4, 16),
+    videosPct: pct(10, 48),
+    revenuePct: pct(6, 20),
+  };
+  const creatorMetrics = {
+    newToday: today.creators,
+    active: Math.max(1, Math.round(creators * (0.35 + rng() * 0.35))),
+    returningPct: pct(64, 88),
+    growthPct: pct(8, 28),
+  };
+  const community = {
+    announcementsReadPct: pct(84, 97),
+    challengeParticipants: Math.round(creators * (0.2 + rng() * 0.25)),
+    comments: Math.round(comments * (0.008 + rng() * 0.01)) + pct(20, 90),
+    messages: pct(8, 40),
+  };
+
+  // AI-style insights (deterministic; read like analysis)
+  const topPlatformLabel = { TIKTOK: "TikTok", YOUTUBE_SHORTS: "YouTube", INSTAGRAM_REELS: "Instagram" }[campaign.platform];
+  const insights = [
+    {
+      icon: "📈",
+      title: today.creators >= 3 ? "Your campaign accelerated today." : "Your campaign is steady.",
+      body: `${today.creators} new creator${today.creators > 1 ? "s" : ""} joined and published ${today.videos} video${today.videos > 1 ? "s" : ""} today.`,
+    },
+    {
+      icon: "💡",
+      title: "Suggestion",
+      body: roi >= 2.5 ? "ROAS is above target — increasing budget ~15% could scale reach." : "Tighten creator rules to lift conversion before scaling budget.",
+    },
+    {
+      icon: "🔥",
+      title: "Trend",
+      body: `${topPlatformLabel} is your strongest platform right now, with an average of ${avgViews >= 1000 ? Math.round(avgViews / 1000) + "k" : avgViews} views per video.`,
+    },
+  ];
 
   const funnel = [
     { label: "Views", value: totalViews },
@@ -155,5 +215,21 @@ export function campaignMetrics(
     series,
     feed,
     deltas: { revenue: delta(), profit: delta(), sales: delta() },
+    // AmplyGo-specific groups
+    creators,
+    videos,
+    reach,
+    shares,
+    comments,
+    avgViews,
+    bestVideoViews,
+    cpaCents,
+    roas,
+    conversionRatePct,
+    topPlatform: campaign.platform,
+    today,
+    creatorMetrics,
+    community,
+    insights,
   };
 }

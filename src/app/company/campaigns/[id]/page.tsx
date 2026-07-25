@@ -41,6 +41,31 @@ function Panel({ title, right, children }: { title: string; right?: React.ReactN
   );
 }
 
+function Metric({ label, value, delta, sub }: { label: string; value: React.ReactNode; delta?: number; sub?: string }) {
+  return (
+    <Card className="lift spot-card" style={{ padding: "14px 16px" }}>
+      <div className="metric-label">{label}</div>
+      <div className="metric-value tabular">{value}</div>
+      {delta != null ? (
+        <div className={`metric-delta ${delta >= 0 ? "kpi-up" : "kpi-down"}`}>
+          {delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%
+        </div>
+      ) : sub ? (
+        <div className="metric-delta" style={{ color: "var(--text-dimmer)" }}>{sub}</div>
+      ) : null}
+    </Card>
+  );
+}
+
+function MetricSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <div className="metric-section-head">{title}</div>
+      <div className="metric-grid">{children}</div>
+    </section>
+  );
+}
+
 export default async function CompanyCampaignDetail({ params }: { params: { id: string } }) {
   const session = await requireRole("COMPANY");
   const company = (await getCompanyByUserId(session.user.id))!;
@@ -65,8 +90,9 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
   );
   const creatorNames = new Map(creatorEntries);
   const nameOf = (id: string) => creatorNames.get(id) ?? "Unknown creator";
-  const m = campaignMetrics(campaign, submissions, nameOf, cur);
+  const m = campaignMetrics(campaign, submissions, nameOf, cur, participations.length);
   const money = (c: number) => formatCents(c, cur);
+  const kNum = (n: number) => formatNumber(n);
   const aov = convertCents(4900, "USD", cur);
 
   // Top performing videos (real submissions by views, demo revenue).
@@ -94,16 +120,6 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
     { label: "100 sales", date: m.sales >= 100 ? "reached" : "~soon", done: m.sales >= 100 },
     { label: "Budget 100%", date: spentPctReal >= 100 ? "reached" : "~soon", done: spentPctReal >= 100 },
   ];
-
-  const kpi = (label: string, value: React.ReactNode, delta: number, sub?: string) => (
-    <div>
-      <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>{label}</div>
-      <div className="tabular" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>{value}</div>
-      <div style={{ fontSize: 12, marginTop: 4 }} className={delta >= 0 ? "kpi-up" : "kpi-down"}>
-        {sub ?? `▲ ${delta}% vs yesterday`}
-      </div>
-    </div>
-  );
 
   // ---- Tab contents ----
   const submissionsTab = (
@@ -179,34 +195,43 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
       headerRight={<CampaignStatusActions campaignId={campaign.id} status={campaign.status} />}
     >
       <div className="page-pad dense">
-        {/* Hero KPIs */}
-        <Card hero style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 22 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <Badge tone={campaignStatusTone(campaign.status)}>{campaign.status}</Badge>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-dim)" }}>
-              <PlatformIcon platform={campaign.platform} size={15} />
-              {PLATFORM_LABEL[campaign.platform]} · {campaign.language} · {campaign.country} ·{" "}
-              {campaign.endDate ? `Ends ${formatDate(campaign.endDate)}` : "No end date"}
-            </span>
-          </div>
-          <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 20 }}>
-            {kpi("Revenue", <CountUp to={m.revenueCents} currency={cur} />, m.deltas.revenue)}
-            <div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>Profit</div>
-              <div className="tabular kpi-up" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>
-                +<CountUp to={m.profitCents} currency={cur} />
-              </div>
-              <div className="kpi-up" style={{ fontSize: 12, marginTop: 4 }}>▲ {m.deltas.profit}% vs last week</div>
+        {/* HERO — "Your campaign today" */}
+        <Card hero style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <Badge tone={campaignStatusTone(campaign.status)}>{campaign.status}</Badge>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-dim)" }}>
+                <PlatformIcon platform={campaign.platform} size={15} />
+                {PLATFORM_LABEL[campaign.platform]} · {campaign.language} · {campaign.country} ·{" "}
+                {campaign.endDate ? `Ends ${formatDate(campaign.endDate)}` : "No end date"}
+              </span>
             </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>ROI</div>
-              <div className="tabular" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>
-                <CountUp to={m.roi} decimals={1} suffix="x" />
-              </div>
-              <div style={{ fontSize: 12, marginTop: 4, color: "var(--text-dim)" }}>Target: 2.5x</div>
-            </div>
-            {kpi("Sales", <CountUp to={m.sales} />, m.deltas.sales)}
+            <ShareResults campaignId={campaign.id} token={campaign.shareToken} compact />
           </div>
+
+          <div>
+            <div className="hero-today-label">Your campaign today</div>
+            <div className="hero-today-grid">
+              {[
+                { k: "Views", v: `+${kNum(m.today.views)}`, d: m.today.viewsPct },
+                { k: "Creators", v: `+${m.today.creators}`, d: m.today.creatorsPct },
+                { k: "Videos", v: `+${m.today.videos}`, d: m.today.videosPct },
+                { k: "Revenue", v: `+${money(m.today.revenueCents)}`, d: m.today.revenuePct },
+              ].map((t) => (
+                <div key={t.k} className="hero-today-cell">
+                  <div className="hero-today-k">{t.k}</div>
+                  <div className="hero-today-v tabular">{t.v}</div>
+                  <div className="kpi-up" style={{ fontSize: 12 }}>▲ {t.d}%</div>
+                </div>
+              ))}
+            </div>
+            <div className="hero-today-summary">
+              {m.today.creators >= 3
+                ? `Strong day — ${m.today.creators} new creators joined and published ${m.today.videos} videos, adding ${kNum(m.today.views)} views.`
+                : `Steady day — ${m.today.videos} new videos added ${kNum(m.today.views)} views.`}
+            </div>
+          </div>
+
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-dim)", marginBottom: 6 }}>
               <span>Budget spent</span>
@@ -215,23 +240,66 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
             <div className="progress-track" style={{ height: 8 }}>
               <div className="progress-fill" style={{ width: `${pct}%` }} />
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-dimmer)", marginTop: 8 }}>
-              Forecast: at this pace the budget lasts a few more weeks — projected to add more revenue before then.
-            </div>
           </div>
         </Card>
+
+        {/* AI Insights */}
+        <Card className="grad-border" style={{ padding: "18px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <span className="cp-ai-chip">AI</span>
+            <span style={{ fontSize: 13, color: "var(--text-dim)" }}>Automatic insights from your campaign</span>
+          </div>
+          <div className="insight-grid">
+            {m.insights.map((ins) => (
+              <div key={ins.title} className="insight-card">
+                <div className="insight-title"><span>{ins.icon}</span> {ins.title}</div>
+                <div className="insight-body">{ins.body}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Business metrics */}
+        <MetricSection title="Business">
+          <Metric label="Revenue" value={<CountUp to={m.revenueCents} currency={cur} />} delta={m.deltas.revenue} />
+          <Metric label="Profit" value={`+${money(m.profitCents)}`} delta={m.deltas.profit} />
+          <Metric label="ROI" value={`${m.roi.toFixed(1)}x`} sub="Target: 2.5x" />
+          <Metric label="Sales" value={kNum(m.sales)} delta={m.deltas.sales} />
+          <Metric label="CPA" value={m.cpaCents > 0 ? money(m.cpaCents) : "—"} sub="Cost per acquisition" />
+          <Metric label="ROAS" value={`${m.roas.toFixed(1)}x`} sub="Return on ad spend" />
+          <Metric label="Conversion" value={`${m.conversionRatePct.toFixed(1)}%`} sub="Click → sale" />
+        </MetricSection>
+
+        {/* Distribution metrics */}
+        <MetricSection title="Distribution">
+          <Metric label="Creators" value={kNum(m.creators)} />
+          <Metric label="Videos" value={kNum(m.videos)} />
+          <Metric label="Views" value={kNum(m.totalViews)} />
+          <Metric label="Reach" value={kNum(m.reach)} />
+          <Metric label="Shares" value={kNum(m.shares)} />
+          <Metric label="Comments" value={kNum(m.comments)} />
+        </MetricSection>
+
+        {/* Content metrics */}
+        <MetricSection title="Content">
+          <Metric label="Videos published today" value={kNum(m.today.videos)} />
+          <Metric label="Average views" value={kNum(m.avgViews)} />
+          <Metric label="Best performing video" value={kNum(m.bestVideoViews)} />
+          <Metric label="Top platform" value={PLATFORM_LABEL[m.topPlatform]} />
+        </MetricSection>
+
+        {/* Creator metrics */}
+        <MetricSection title="Creators">
+          <Metric label="New creators today" value={`+${m.creatorMetrics.newToday}`} />
+          <Metric label="Active creators" value={kNum(m.creatorMetrics.active)} />
+          <Metric label="Returning creators" value={`${m.creatorMetrics.returningPct}%`} />
+          <Metric label="Creator growth" value={`+${m.creatorMetrics.growthPct}%`} delta={m.creatorMetrics.growthPct} />
+        </MetricSection>
 
         {/* Invite creators */}
         <Panel title="Invite creators">
           <div style={{ padding: 16 }}>
             <CampaignInviteManager campaignId={campaign.id} invites={invites} />
-          </div>
-        </Panel>
-
-        {/* Share results publicly */}
-        <Panel title="Share results">
-          <div style={{ padding: 16 }}>
-            <ShareResults campaignId={campaign.id} token={campaign.shareToken} />
           </div>
         </Panel>
 
@@ -379,6 +447,14 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
             ))}
           </div>
         </Panel>
+
+        {/* Community metrics */}
+        <MetricSection title="Community">
+          <Metric label="Announcements read" value={`${m.community.announcementsReadPct}%`} />
+          <Metric label="Challenge participants" value={kNum(m.community.challengeParticipants)} />
+          <Metric label="Comments" value={kNum(m.community.comments)} />
+          <Metric label="Messages" value={kNum(m.community.messages)} />
+        </MetricSection>
 
         {/* Tabs */}
         <CampaignTabs

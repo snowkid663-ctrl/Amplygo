@@ -28,6 +28,7 @@ export default async function CompanySettingsPage() {
               name={company.companyName}
               avatarUrl={company.logoUrl}
               bannerUrl={company.bannerUrl}
+              bannerPos={company.bannerPos}
               avatarShape="rounded"
             />
             <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 16 }}>

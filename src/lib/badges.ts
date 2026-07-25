@@ -87,3 +87,73 @@ export function earnedBadgeIds(s: CreatorBadgeStats): string[] {
   const order: Rarity[] = ["mythic", "legendary", "epic", "rare", "common"];
   return ids.sort((a, b) => order.indexOf(getBadge(a)!.rarity) - order.indexOf(getBadge(b)!.rarity));
 }
+
+export interface BadgeProgress {
+  def: BadgeDef;
+  earned: boolean;
+  pct: number | null; // 0..1 toward unlocking (null = not measurable yet)
+  label: string | null; // e.g. "6 / 10 campaigns"
+}
+
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+
+/** Per-badge earned state + progress toward the ones still locked. */
+export function badgeProgress(s: CreatorBadgeStats): BadgeProgress[] {
+  const earned = new Set(earnedBadgeIds(s));
+  const approvalRate = s.submittedCount > 0 ? s.approvedCount / s.submittedCount : 0;
+  const completionRate = s.participationCount > 0 ? s.approvedCount / s.participationCount : 0;
+
+  // Best platform stats (used for the platform-expert badges).
+  const platformBest = (id: string) => {
+    const entry = Object.entries(PLATFORM_BADGE).find(([, badgeId]) => badgeId === id);
+    if (!entry) return null;
+    return s.platform[entry[0] as Platform];
+  };
+
+  const metric: Record<string, { pct: number; label: string }> = {
+    viral: { pct: clamp01(s.avgViews / 100000), label: `${formatK(s.avgViews)} / 100k avg views` },
+    million: { pct: clamp01(s.maxViews / 1000000), label: `${formatK(s.maxViews)} / 1M top video` },
+    trusted: { pct: clamp01(s.approvedCount / 10), label: `${s.approvedCount} / 10 campaigns` },
+    veteran: { pct: clamp01(s.approvedCount / 100), label: `${s.approvedCount} / 100 campaigns` },
+    reliable: {
+      pct: s.participationCount < 3 ? clamp01(s.participationCount / 3) : clamp01(completionRate / 0.95),
+      label: s.participationCount < 3 ? `${s.participationCount} / 3 campaigns` : `${Math.round(completionRate * 100)}% / 95% completion`,
+    },
+    rules: {
+      pct: s.submittedCount < 5 ? clamp01(s.submittedCount / 5) : clamp01(approvalRate / 0.98),
+      label: s.submittedCount < 5 ? `${s.submittedCount} / 5 videos` : `${Math.round(approvalRate * 100)}% / 98% approved`,
+    },
+    revenue: { pct: clamp01(s.grossUsdCents / 1_000_000), label: `$${formatK(s.grossUsdCents / 100)} / $10k for brands` },
+    diamond: { pct: clamp01(s.netUsdCents / 10_000_000), label: `$${formatK(s.netUsdCents / 100)} / $100k earned` },
+    brandFav: { pct: clamp01(s.distinctCompanies / 20), label: `${s.distinctCompanies} / 20 companies` },
+  };
+
+  const order: Rarity[] = ["mythic", "legendary", "epic", "rare", "common"];
+  return BADGES.map((def): BadgeProgress => {
+    const isEarned = earned.has(def.id);
+    let pct: number | null = null;
+    let label: string | null = null;
+    if (metric[def.id]) {
+      pct = metric[def.id].pct;
+      label = metric[def.id].label;
+    } else {
+      const pb = platformBest(def.id);
+      if (pb) {
+        pct = clamp01((pb.n / 3) * 0.5 + (pb.avgViews / 50000) * 0.5);
+        label = `${pb.n} / 3 videos · ${formatK(pb.avgViews)} / 50k avg`;
+      }
+    }
+    return { def, earned: isEarned, pct: isEarned ? 1 : pct, label: isEarned ? null : label };
+  }).sort((a, b) => {
+    // Earned first, then closest-to-unlock, then by rarity.
+    if (a.earned !== b.earned) return a.earned ? -1 : 1;
+    if (!a.earned && !b.earned) return (b.pct ?? 0) - (a.pct ?? 0);
+    return order.indexOf(a.def.rarity) - order.indexOf(b.def.rarity);
+  });
+}
+
+function formatK(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + "M";
+  if (n >= 1_000) return Math.round(n / 1_000) + "k";
+  return String(Math.round(n));
+}

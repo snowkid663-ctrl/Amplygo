@@ -1,17 +1,21 @@
 import { requireRole } from "@/lib/session";
-import { getCreatorByUserId, listSocialAccounts } from "@/lib/data";
+import { getCreatorByUserId, listSocialAccounts, creatorBadgeStats } from "@/lib/data";
 import { connectStatus } from "@/lib/oauth";
+import { badgeProgress } from "@/lib/badges";
 import CreatorNav from "@/components/CreatorNav";
 import { Card } from "@/components/ui/Card";
 import SocialAccountsPanel from "@/components/SocialAccountsPanel";
 import CreatorProfileForm from "@/components/CreatorProfileForm";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 import ProfileMediaEditor from "@/components/ProfileMediaEditor";
+import BadgeGallery from "@/components/BadgeGallery";
+import BadgeList from "@/components/BadgeList";
 
 const CONNECT_ERRORS: Record<string, string> = {
   state: "Connection expired or was tampered with. Please try again.",
   token: "Could not complete the connection with the provider.",
-  identity: "Connected, but we couldn't read your account details.",
+  identity:
+    "Signed in, but we couldn't read your channel. Make sure this Google account has a YouTube channel, and that the “YouTube Data API v3” is enabled in the Google Cloud project (APIs & Services → Library).",
   denied: "You declined the permission request.",
 };
 
@@ -24,6 +28,8 @@ export default async function CreatorSettingsPage({
   const creator = (await getCreatorByUserId(session.user.id))!;
   const accounts = await listSocialAccounts(creator.id);
   const status = connectStatus();
+  const badges = badgeProgress(await creatorBadgeStats(creator.id));
+  const earnedBadges = badges.filter((b) => b.earned).map((b) => b.def.id);
 
   const connected = searchParams.connected;
   const connectError = searchParams.connect_error;
@@ -38,6 +44,7 @@ export default async function CreatorSettingsPage({
               name={creator.displayName}
               avatarUrl={creator.avatarUrl}
               bannerUrl={creator.bannerUrl}
+              bannerPos={creator.bannerPos}
               avatarShape="circle"
             />
             <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 16 }}>
@@ -48,6 +55,24 @@ export default async function CreatorSettingsPage({
               bio={creator.bio}
               displayCurrency={creator.displayCurrency}
             />
+          </Card>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="section-label">Badges</div>
+          <Card className="lift" style={{ padding: "14px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <BadgeList ids={earnedBadges} />
+              <span className="tabular" style={{ fontSize: 12, color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                {earnedBadges.length} / {badges.length} unlocked
+              </span>
+            </div>
+            <details className="badge-details">
+              <summary>See all badges &amp; progress</summary>
+              <div style={{ marginTop: 14 }}>
+                <BadgeGallery items={badges} />
+              </div>
+            </details>
           </Card>
         </div>
 

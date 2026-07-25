@@ -14,8 +14,12 @@ under `features/` so ideas are captured and organized **before** implementation.
 
 | Feature | Status | Doc |
 |---|---|---|
-| Campaign Invites (invite links, QR, per-link analytics) | shipped (MVP) | [features/campaign-invites.md](features/campaign-invites.md) |
+| Campaign Invites (links, QR, analytics, **branding**) | shipped (MVP) | [features/campaign-invites.md](features/campaign-invites.md) |
 | Campaign Embeds (iframe join widget) | shipped (basic) | [features/embeds.md](features/embeds.md) |
-| Creator Badges (with rarity) | in progress | [features/badges.md](features/badges.md) |
+| Creator Badges (rarity + gamified gallery) | in progress | [features/badges.md](features/badges.md) |
 | Shareable Results (growth loop) | shipped (MVP) | [features/shareable-results.md](features/shareable-results.md) |
+| Campaign analytics (company dashboard, grouped metrics + AI insights) | shipped (MVP) | [features/campaign-analytics.md](features/campaign-analytics.md) |
+| Creator profile (performance panel) | shipped (MVP) | [features/creator-profile.md](features/creator-profile.md) |
+| Profile media (photo, banner, reposition) | shipped | [features/profile-media.md](features/profile-media.md) |
+| Social login & YouTube auto-link | shipped | [features/social-login.md](features/social-login.md) |
 | Campaign approval (auto-approve companies, admin approves campaigns) | shipped | — |

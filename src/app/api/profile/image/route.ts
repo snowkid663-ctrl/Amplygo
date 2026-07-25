@@ -8,6 +8,8 @@ import {
   getCreatorByUserId,
   updateCompanyImage,
   updateCreatorImage,
+  updateCompanyBannerPos,
+  updateCreatorBannerPos,
 } from "@/lib/data";
 
 const ALLOWED_EXT: Record<string, string> = {
@@ -77,6 +79,27 @@ export async function POST(req: Request) {
 
   await persist(role, ownerId, kind as Kind, url);
   return NextResponse.json({ ok: true, url });
+}
+
+export async function PATCH(req: Request) {
+  const session = await getSession();
+  if (!session?.user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const role = session.user.role;
+  if (role !== "COMPANY" && role !== "CREATOR") {
+    return NextResponse.json({ error: "Profile images are only available for companies and creators" }, { status: 400 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const posRaw = Number(body?.bannerPos);
+  if (!Number.isFinite(posRaw)) return NextResponse.json({ error: "bannerPos must be a number" }, { status: 400 });
+  const pos = Math.max(0, Math.min(100, Math.round(posRaw)));
+
+  const ownerId = await resolveOwner(role, session.user.id);
+  if (!ownerId) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  if (role === "COMPANY") await updateCompanyBannerPos(ownerId, pos);
+  else await updateCreatorBannerPos(ownerId, pos);
+  return NextResponse.json({ ok: true, bannerPos: pos });
 }
 
 export async function DELETE(req: Request) {

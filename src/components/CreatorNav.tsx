@@ -4,6 +4,7 @@ import AppShell, { NavItem } from "./AppShell";
 
 const items: NavItem[] = [
   { href: "/creator/dashboard", label: "Dashboard" },
+  { href: "/creator/profile", label: "Profile" },
   { href: "/creator/browse", label: "Browse campaigns" },
   { href: "/creator/my-campaigns", label: "My campaigns" },
   { href: "/creator/earnings", label: "Earnings" },

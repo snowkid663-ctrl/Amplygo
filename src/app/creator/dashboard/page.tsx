@@ -9,11 +9,8 @@ import {
   getCompanyById,
   availableBalance,
   totalApprovedEarnings,
-  creatorBadgeStats,
 } from "@/lib/data";
 import { formatCents, formatConverted } from "@/lib/money";
-import { earnedBadgeIds } from "@/lib/badges";
-import BadgeList from "@/components/BadgeList";
 import { submissionStatusTone, formatNumber } from "@/lib/format";
 import CreatorNav from "@/components/CreatorNav";
 import CountUp from "@/components/CountUp";
@@ -44,7 +41,6 @@ export default async function CreatorDashboard() {
   ]);
   const pendingCount = submissions.filter((s) => s.status === "PENDING").length;
   const totalViews = submissions.reduce((sum, s) => sum + (s.viewsCount ?? 0), 0);
-  const badges = earnedBadgeIds(await creatorBadgeStats(creator.id));
 
   return (
     <CreatorNav
@@ -87,11 +83,6 @@ export default async function CreatorDashboard() {
             </div>
           </Card>
         </div>
-
-        <Card style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>Your badges</div>
-          <BadgeList ids={badges} />
-        </Card>
 
         <Card style={{ overflow: "hidden" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--hairline)", fontSize: 14, fontWeight: 600 }}>

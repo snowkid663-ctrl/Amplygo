@@ -6,9 +6,9 @@ import { signIn, getProviders } from "next-auth/react";
 import Link from "next/link";
 import { Field, Input } from "@/components/ui/Field";
 import BrandLogo from "@/components/BrandLogo";
+import AmplyMark from "@/components/AmplyMark";
 import NetworkBackground from "@/components/NetworkBackground";
 import PlatformIcon from "@/components/PlatformIcon";
-import VideoTile from "@/components/VideoTile";
 
 function GoogleIcon() {
   return (
@@ -46,6 +46,15 @@ function AuthForm() {
       return;
     }
     signIn("google", { callbackUrl: "/onboarding" });
+  }
+
+  function socialYouTube() {
+    if (!googleReady) {
+      setError("Social login isn't configured yet — add your Google credentials to .env (see SETUP-OAUTH.md).");
+      return;
+    }
+    // Sign in with Google, then chain into linking the YouTube channel automatically.
+    signIn("google", { callbackUrl: "/connect-youtube" });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -109,24 +118,14 @@ function AuthForm() {
       </div>
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, position: "relative" }}>
-        <div className="auth-float auth-float-l floaty" aria-hidden="true">
-          <VideoTile grad={1} views="1.2M" platform="TIKTOK" />
-        </div>
-        <div className="auth-float auth-float-r floaty" aria-hidden="true" style={{ animationDelay: "1.4s" }}>
-          <VideoTile grad={3} views="840K" platform="YOUTUBE_SHORTS" />
-        </div>
-        <div className="auth-float auth-float-r2 floaty" aria-hidden="true" style={{ animationDelay: "0.7s" }}>
-          <VideoTile grad={5} views="2.4M" platform="INSTAGRAM_REELS" />
-        </div>
+        <div className="auth-card-wrap">
         <form
           onSubmit={handleSubmit}
           className="fu glass-strong glass-hi auth-card"
           style={{ width: 410, display: "flex", flexDirection: "column", gap: 18, padding: "34px 30px", zIndex: 1 }}
         >
           <div className="auth-logo">
-            <svg width={20} height={20} viewBox="0 0 24 24" fill="white" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <AmplyMark size={52} />
           </div>
 
           <div style={{ textAlign: "center" }}>
@@ -218,7 +217,7 @@ function AuthForm() {
               Continue with Google
               <span className="arrow">→</span>
             </button>
-            <button type="button" className="auth-social" onClick={social}>
+            <button type="button" className="auth-social" onClick={socialYouTube}>
               <PlatformIcon platform="YOUTUBE_SHORTS" size={18} />
               Continue with YouTube
               <span className="arrow">→</span>
@@ -239,6 +238,7 @@ function AuthForm() {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

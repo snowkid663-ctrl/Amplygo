@@ -1,7 +1,23 @@
 # Creator Badges (with rarity)
 
-**Status:** in progress (MVP: computable badges + rarity display shipped)
-**Last updated:** 2026-07-24
+**Status:** in progress (MVP: computable badges, rarity display, and a gamified
+gallery shipped)
+**Last updated:** 2026-07-25
+
+## Gamified gallery (shipped 2026-07-25)
+
+Badges no longer live on the creator **dashboard** — they moved to the creator
+**profile** (Settings → Badges) and render as a full **gallery** instead of a
+flat pill list:
+
+- Every badge in the catalog is shown. **Earned** badges glow in their rarity
+  color; **locked** ones are dimmed with a lock.
+- Locked badges with a measurable metric show a **progress bar** + a
+  `current / target` label (e.g. `6 / 10 campaigns`, `82k / 100k avg views`).
+- Sorted **earned first, then closest-to-unlock**, so the creator always sees
+  their next win. A header shows `earned / total`.
+- Progress is computed by `badgeProgress()` in `src/lib/badges.ts`; the UI is
+  `src/components/BadgeGallery.tsx`.
 
 ## Summary
 

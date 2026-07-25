@@ -48,9 +48,20 @@ export default async function InvitePage({
   const isLoggedIn = !!session?.user;
   const returnTo = `/invite/${invite.token}${searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : ""}`;
 
+  const accent = invite.themeColor;
+  const bgUrl = invite.themeBgUrl;
+  const accentText = accent ?? "var(--accent-text)";
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <NetworkBackground />
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative" }}>
+      {bgUrl ? (
+        <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: -1 }}>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${bgUrl})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, oklch(4% 0.01 264 / 0.55), oklch(4% 0.01 264 / 0.85))" }} />
+        </div>
+      ) : (
+        <NetworkBackground />
+      )}
       <div style={{ padding: "20px 32px" }}>
         <Link href="/" style={{ display: "inline-block" }}>
           <BrandLogo height={28} />
@@ -66,7 +77,7 @@ export default async function InvitePage({
             Invited by <b style={{ color: "white" }}>{company.companyName}</b>
           </div>
           <div>
-            <div style={{ fontSize: 13, color: "var(--accent-text)", fontWeight: 600 }}>{campaign.brand}</div>
+            <div style={{ fontSize: 13, color: accentText, fontWeight: 600 }}>{campaign.brand}</div>
             <h1 style={{ fontSize: 26, fontWeight: 700, margin: "2px 0 0", letterSpacing: "-0.02em" }}>{campaign.name}</h1>
           </div>
 
@@ -104,7 +115,12 @@ export default async function InvitePage({
               ].map((t) => (
                 <div key={t.v} className="glass" style={{ padding: "12px 6px", borderRadius: 10 }}>
                   <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{t.v} views</div>
-                  <div className="gradient-text-pink" style={{ fontSize: 18, fontWeight: 700 }}>{formatCents(t.n, cur)}</div>
+                  <div
+                    className={accent ? undefined : "gradient-text-pink"}
+                    style={{ fontSize: 18, fontWeight: 700, color: accent ?? undefined }}
+                  >
+                    {formatCents(t.n, cur)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -119,7 +135,11 @@ export default async function InvitePage({
             <div className="alert-error">Only creator accounts can join campaigns.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <Link href={`/auth?callbackUrl=${encodeURIComponent(returnTo)}`} className="btn btn-primary glow-primary" style={{ borderRadius: 100 }}>
+              <Link
+                href={`/auth?callbackUrl=${encodeURIComponent(returnTo)}`}
+                className="btn btn-primary glow-primary"
+                style={accent ? { borderRadius: 100, background: accent, borderColor: accent, color: "#04140c" } : { borderRadius: 100 }}
+              >
                 Create account to join
               </Link>
               <Link href={`/auth?callbackUrl=${encodeURIComponent(returnTo)}`} className="btn btn-secondary glass" style={{ borderRadius: 100 }}>

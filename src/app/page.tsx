@@ -3,7 +3,6 @@ import BrandLogo from "@/components/BrandLogo";
 import Reveal from "@/components/Reveal";
 import LiveCampaignCard from "@/components/LiveCampaignCard";
 import VideoTile from "@/components/VideoTile";
-import VideoCarousel from "@/components/VideoCarousel";
 import ProductShowcase from "@/components/ProductShowcase";
 import PlatformIcon from "@/components/PlatformIcon";
 import CountUp from "@/components/CountUp";
@@ -175,20 +174,9 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Content wall + stats */}
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "48px 32px 8px" }}>
-        <Reveal>
-          <h2 style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.02em", textAlign: "center", margin: "0 0 6px" }}>
-            Real creator content. <span className="gradient-text-pink">Real views.</span>
-          </h2>
-          <p style={{ textAlign: "center", fontSize: 15, color: "var(--text-dim)", margin: "0 0 32px" }}>
-            Hundreds of videos published for brands this week alone.
-          </p>
-        </Reveal>
-        <Reveal delay={80}>
-          <VideoCarousel />
-        </Reveal>
-        <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 760, margin: "56px auto 0" }}>
+      {/* Stats */}
+      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "40px 32px 8px" }}>
+        <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, maxWidth: 760, margin: "0 auto" }}>
           {heroStats.map((s) => (
             <div key={s.k} className="glass glass-hi spot-card" style={{ padding: "18px 10px", borderRadius: 14, textAlign: "center" }}>
               <div className="gradient-text-pink" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}>

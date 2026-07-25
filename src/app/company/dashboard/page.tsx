@@ -5,7 +5,6 @@ import { formatCents } from "@/lib/money";
 import { campaignStatusTone, companyStatusTone } from "@/lib/format";
 import CompanyNav from "@/components/CompanyNav";
 import CountUp from "@/components/CountUp";
-import Sparkline from "@/components/Sparkline";
 import { Card } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -28,12 +27,7 @@ export default async function CompanyDashboard() {
   return (
     <CompanyNav
       title="Dashboard"
-      headerRight={
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Badge tone="green">Balance: {formatCents(company.balanceCents, company.currency)}</Badge>
-          <div className="avatar-badge">{company.companyName.slice(0, 1).toUpperCase()}</div>
-        </div>
-      }
+      headerRight={<Badge tone="green">Balance: {formatCents(company.balanceCents, company.currency)}</Badge>}
     >
       <div className="page-pad">
         {company.status !== "APPROVED" && (
@@ -58,25 +52,21 @@ export default async function CompanyDashboard() {
         <div className="resp-2" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
           <Card className="lift spot-card fu fu-1" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Active campaigns</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={active.length} /></div>
-            <div style={{ marginTop: 10 }}><Sparkline seed="co-active" /></div>
+            <div className="tabular" style={{ fontSize: 24, fontWeight: 800 }}><CountUp to={active.length} /></div>
           </Card>
           <Card className="lift spot-card fu fu-2" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Budget committed</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={totalBudget} currency={company.currency} /></div>
-            <div style={{ marginTop: 10 }}><Sparkline seed="co-budget" /></div>
+            <div className="tabular" style={{ fontSize: 24, fontWeight: 800 }}><CountUp to={totalBudget} currency={company.currency} /></div>
           </Card>
           <Card className="lift spot-card fu fu-3" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Spent (approved views)</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700 }}><CountUp to={totalSpent} currency={company.currency} /></div>
-            <div style={{ marginTop: 10 }}><Sparkline seed="co-spent" /></div>
+            <div className="tabular" style={{ fontSize: 24, fontWeight: 800 }}><CountUp to={totalSpent} currency={company.currency} /></div>
           </Card>
           <Card className="lift spot-card fu fu-4" style={{ padding: 18 }}>
             <div style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 8 }}>Submissions awaiting review</div>
-            <div className="tabular" style={{ fontSize: 22, fontWeight: 700, color: pendingSubmissions ? "var(--amber)" : "white" }}>
+            <div className="tabular" style={{ fontSize: 24, fontWeight: 800, color: pendingSubmissions ? "var(--amber)" : "white" }}>
               <CountUp to={pendingSubmissions} />
             </div>
-            <div style={{ marginTop: 10 }}><Sparkline seed="co-pending" up={false} /></div>
           </Card>
         </div>
 
