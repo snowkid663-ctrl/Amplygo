@@ -9,6 +9,7 @@ import {
   listSocialAccounts,
 } from "@/lib/data";
 import type { Platform } from "@/lib/types";
+import { extractYouTubeId } from "@/lib/youtube";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getSession();
@@ -45,13 +46,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!videoUrl?.trim()) return NextResponse.json({ error: "A video link is required." }, { status: 400 });
   if (!publishedAt) return NextResponse.json({ error: "Publish date is required." }, { status: 400 });
 
+  const resolvedPlatform = platform || campaign.platform;
   const submission = await createSubmission({
     campaignId: campaign.id,
     creatorId: creator.id,
     participationId: participation.id,
     videoUrl: videoUrl.trim(),
-    platform: platform || campaign.platform,
+    platform: resolvedPlatform,
     publishedAt,
+    // Capture the YouTube video id so we can pull real view/like/comment counts.
+    externalVideoId: resolvedPlatform === "YOUTUBE_SHORTS" ? extractYouTubeId(videoUrl.trim()) : null,
   });
 
   return NextResponse.json({ submission });

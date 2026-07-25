@@ -144,7 +144,16 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
           <div key={s.id} className="table-grid table-row" style={{ gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr" }}>
             <div style={{ fontSize: 14, fontWeight: 500 }}>{nameOf(s.creatorId)}</div>
             <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{formatDate(s.publishedAt)}</div>
-            <div style={{ fontSize: 14 }}>{s.viewsCount != null ? formatNumber(s.viewsCount) : "—"}</div>
+            <div style={{ fontSize: 14 }}>
+              {s.viewsCount != null ? formatNumber(s.viewsCount) : "—"}
+              {(s.likesCount != null || s.commentsCount != null) && (
+                <div style={{ fontSize: 11, color: "var(--text-dimmer)", marginTop: 2 }}>
+                  {s.likesCount != null ? `❤ ${formatNumber(s.likesCount)}` : ""}
+                  {s.likesCount != null && s.commentsCount != null ? " · " : ""}
+                  {s.commentsCount != null ? `💬 ${formatNumber(s.commentsCount)}` : ""}
+                </div>
+              )}
+            </div>
             <div style={{ fontSize: 14, fontWeight: 600 }}>{s.creatorNetCents != null ? money(s.creatorNetCents) : "—"}</div>
             <div><Badge tone={submissionStatusTone(s.status)} small>{s.status}</Badge></div>
           </div>

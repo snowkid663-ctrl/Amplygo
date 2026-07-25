@@ -424,14 +424,15 @@ export interface NewSubmissionInput {
   videoUrl: string;
   platform: Platform;
   publishedAt: string;
+  externalVideoId?: string | null;
 }
 
 export async function createSubmission(input: NewSubmissionInput): Promise<SubmissionRow> {
   const id = newId();
   await run(
-    `INSERT INTO submissions (id, "campaignId", "creatorId", "participationId", "videoUrl", platform, "publishedAt")
-     VALUES ($id, $campaignId, $creatorId, $participationId, $videoUrl, $platform, $publishedAt)`,
-    { id, ...input }
+    `INSERT INTO submissions (id, "campaignId", "creatorId", "participationId", "videoUrl", platform, "publishedAt", "externalVideoId")
+     VALUES ($id, $campaignId, $creatorId, $participationId, $videoUrl, $platform, $publishedAt, $externalVideoId)`,
+    { id, ...input, externalVideoId: input.externalVideoId ?? null }
   );
   return (await getSubmissionById(id))!;
 }
@@ -626,6 +627,39 @@ export async function saveMedia(mime: string, data: Buffer): Promise<string> {
 
 export function getMedia(id: string): Promise<{ mime: string; data: Buffer | Uint8Array } | undefined> {
   return get<{ mime: string; data: Buffer | Uint8Array }>(`SELECT mime, data FROM media WHERE id = $id`, { id });
+}
+
+// ---------- Video stats (real engagement tracking) ----------
+
+/** Submissions we can refresh via the YouTube API (have a video id). */
+export function listTrackableYouTubeSubmissions(): Promise<{ id: string; externalVideoId: string }[]> {
+  return all<{ id: string; externalVideoId: string }>(
+    `SELECT id, "externalVideoId" FROM submissions
+      WHERE platform = 'YOUTUBE_SHORTS' AND "externalVideoId" IS NOT NULL`
+  );
+}
+
+/** Records a stats snapshot and updates the submission's latest counts. */
+export async function recordVideoStats(
+  submissionId: string,
+  stats: { views: number; likes: number | null; comments: number | null }
+): Promise<void> {
+  await run(
+    `INSERT INTO video_stats (id, "submissionId", views, likes, comments) VALUES ($id, $submissionId, $views, $likes, $comments)`,
+    { id: newId(), submissionId, views: stats.views, likes: stats.likes, comments: stats.comments }
+  );
+  await run(
+    `UPDATE submissions SET "viewsCount" = $views, "likesCount" = $likes, "commentsCount" = $comments, "statsUpdatedAt" = now()::text WHERE id = $id`,
+    { id: submissionId, views: stats.views, likes: stats.likes, comments: stats.comments }
+  );
+}
+
+/** Time-series of view snapshots for a submission (oldest first). */
+export function videoStatsSeries(submissionId: string): Promise<{ views: number; capturedAt: string }[]> {
+  return all<{ views: number; capturedAt: string }>(
+    `SELECT views, "capturedAt" FROM video_stats WHERE "submissionId" = $submissionId ORDER BY "capturedAt" ASC`,
+    { submissionId }
+  );
 }
 
 // ---------- Creator public profile (performance panel) ----------

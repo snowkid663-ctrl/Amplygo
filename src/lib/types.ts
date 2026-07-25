@@ -137,6 +137,10 @@ export interface SubmissionRow {
   flagged: number;
   flagReason: string | null;
   viewsCount: number | null;
+  externalVideoId: string | null;
+  likesCount: number | null;
+  commentsCount: number | null;
+  statsUpdatedAt: string | null;
   grossCents: number | null;
   creatorNetCents: number | null;
   platformFeeCents: number | null;

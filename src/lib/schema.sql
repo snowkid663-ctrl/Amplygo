@@ -171,3 +171,20 @@ CREATE TABLE IF NOT EXISTS media (
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS platforms text;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS "productMedia" text;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS attachments text;
+
+-- Real engagement tracking (Phase 1: YouTube). The platform video id + latest
+-- like/comment counts on the submission, plus a time-series of snapshots.
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS "externalVideoId" text;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS "likesCount" integer;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS "commentsCount" integer;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS "statsUpdatedAt" text;
+
+CREATE TABLE IF NOT EXISTS video_stats (
+  id text PRIMARY KEY,
+  "submissionId" text NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  views integer NOT NULL DEFAULT 0,
+  likes integer,
+  comments integer,
+  "capturedAt" text NOT NULL DEFAULT (now()::text)
+);
+CREATE INDEX IF NOT EXISTS idx_video_stats_submission ON video_stats("submissionId");
