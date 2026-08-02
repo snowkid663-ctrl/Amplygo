@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { getCreatorByUserId, listOpenCampaignsForCreator, listSocialAccounts, getCompanyById } from "@/lib/data";
+import { getCreatorByUserId, listOpenCampaignsForCreator, listSocialAccounts, getCompanyCurrencies } from "@/lib/data";
 import { formatConverted } from "@/lib/money";
 import { PLATFORM_LABEL, type Platform } from "@/lib/types";
 import PlatformIcon from "@/components/PlatformIcon";
@@ -20,10 +20,11 @@ export default async function BrowseCampaignsPage({ searchParams }: { searchPara
   const filter = (searchParams.platform ?? "all") as Platform | "all";
   const all = await listOpenCampaignsForCreator();
   const filtered = filter === "all" ? all : all.filter((c) => c.platform === filter);
-  // Resolve each campaign's paying-company currency up front (used for conversion).
-  const campaigns = await Promise.all(
-    filtered.map(async (c) => ({ ...c, companyCurrency: (await getCompanyById(c.companyId))?.currency ?? "USD" }))
+  // Resolve paying-company currencies in one batched query (used for conversion).
+  const curById = new Map(
+    (await getCompanyCurrencies([...new Set(filtered.map((c) => c.companyId))])).map((c) => [c.id, c.currency])
   );
+  const campaigns = filtered.map((c) => ({ ...c, companyCurrency: curById.get(c.companyId) ?? "USD" }));
 
   return (
     <CreatorNav

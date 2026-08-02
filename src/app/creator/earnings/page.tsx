@@ -6,8 +6,8 @@ import {
   totalApprovedEarnings,
   totalPayouts,
   listPayouts,
-  getCampaignById,
-  getCompanyById,
+  getCampaignsByIds,
+  getCompanyCurrencies,
 } from "@/lib/data";
 import { formatCents, formatConverted } from "@/lib/money";
 import { submissionStatusTone, payoutStatusTone, formatDate, formatNumber } from "@/lib/format";
@@ -27,14 +27,17 @@ export default async function EarningsPage() {
     totalApprovedEarnings(creator.id, cur),
     totalPayouts(creator.id, cur),
   ]);
-  // Attach each submission's paying-company currency for conversion.
-  const submissions = await Promise.all(
-    submissionsRaw.map(async (s) => {
-      const campaign = await getCampaignById(s.campaignId);
-      const companyCur = campaign ? (await getCompanyById(campaign.companyId))?.currency ?? "USD" : "USD";
-      return { ...s, campaignName: campaign?.name ?? "—", companyCur };
-    })
+  // Attach each submission's paying-company currency for conversion — batched.
+  const campaigns = await getCampaignsByIds([...new Set(submissionsRaw.map((s) => s.campaignId))]);
+  const campaignById = new Map(campaigns.map((c) => [c.id, c]));
+  const curById = new Map(
+    (await getCompanyCurrencies([...new Set(campaigns.map((c) => c.companyId))])).map((c) => [c.id, c.currency])
   );
+  const submissions = submissionsRaw.map((s) => {
+    const campaign = campaignById.get(s.campaignId);
+    const companyCur = campaign ? curById.get(campaign.companyId) ?? "USD" : "USD";
+    return { ...s, campaignName: campaign?.name ?? "—", companyCur };
+  });
 
   return (
     <CreatorNav title="Earnings">

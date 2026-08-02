@@ -5,8 +5,8 @@ import {
   listSocialAccounts,
   listParticipationsByCreator,
   listSubmissionsByCreator,
-  getCampaignById,
-  getCompanyById,
+  getCampaignsByIds,
+  getCompanyCurrencies,
   availableBalance,
   totalApprovedEarnings,
 } from "@/lib/data";
@@ -29,12 +29,12 @@ export default async function CreatorDashboard() {
     listSubmissionsByCreator(creator.id),
   ]);
 
-  const resolved = await Promise.all(participations.map((p) => getCampaignById(p.campaignId)));
-  const activeCampaigns = await Promise.all(
-    resolved
-      .filter((c): c is NonNullable<typeof c> => !!c && c.status === "ACTIVE")
-      .map(async (c) => ({ ...c, companyCurrency: (await getCompanyById(c.companyId))?.currency ?? "USD" }))
+  const resolved = await getCampaignsByIds([...new Set(participations.map((p) => p.campaignId))]);
+  const activeRaw = resolved.filter((c) => c.status === "ACTIVE");
+  const curById = new Map(
+    (await getCompanyCurrencies([...new Set(activeRaw.map((c) => c.companyId))])).map((c) => [c.id, c.currency])
   );
+  const activeCampaigns = activeRaw.map((c) => ({ ...c, companyCurrency: curById.get(c.companyId) ?? "USD" }));
   const [avail, earned] = await Promise.all([
     availableBalance(creator.id, cur),
     totalApprovedEarnings(creator.id, cur),

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
-import { getCreatorByUserId, listParticipationsByCreator, getCampaignById, getCompanyById, getSubmissionByParticipation } from "@/lib/data";
+import { getCreatorByUserId, listParticipationsByCreator, getCampaignsByIds, getCompanyCurrencies, listSubmissionsByCreator } from "@/lib/data";
 import { formatConverted } from "@/lib/money";
 import { submissionStatusTone, campaignStatusTone, formatNumber } from "@/lib/format";
 import { PLATFORM_LABEL } from "@/lib/types";
@@ -16,17 +16,24 @@ export default async function MyCampaignsPage() {
   const creator = (await getCreatorByUserId(session.user.id))!;
   const cur = creator.displayCurrency;
   const participations = await listParticipationsByCreator(creator.id);
-  const rows = (
-    await Promise.all(
-      participations.map(async (p) => {
-        const campaign = await getCampaignById(p.campaignId);
-        if (!campaign) return null;
-        const companyCur = (await getCompanyById(campaign.companyId))?.currency ?? "USD";
-        const submission = await getSubmissionByParticipation(p.id);
-        return { p, campaign, companyCur, submission };
-      })
-    )
-  ).filter((r): r is NonNullable<typeof r> => r !== null);
+  // Batch: campaigns + this creator's submissions in parallel, then company
+  // currencies — a handful of queries instead of 3 per participation.
+  const [campaigns, submissionsAll] = await Promise.all([
+    getCampaignsByIds([...new Set(participations.map((p) => p.campaignId))]),
+    listSubmissionsByCreator(creator.id),
+  ]);
+  const campaignById = new Map(campaigns.map((c) => [c.id, c]));
+  const curById = new Map(
+    (await getCompanyCurrencies([...new Set(campaigns.map((c) => c.companyId))])).map((c) => [c.id, c.currency])
+  );
+  const submByParticipation = new Map(submissionsAll.map((s) => [s.participationId, s]));
+  const rows = participations
+    .map((p) => {
+      const campaign = campaignById.get(p.campaignId);
+      if (!campaign) return null;
+      return { p, campaign, companyCur: curById.get(campaign.companyId) ?? "USD", submission: submByParticipation.get(p.id) };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
 
   return (
     <CreatorNav title="My campaigns">

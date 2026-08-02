@@ -256,6 +256,18 @@ export function getCampaignById(id: string): Promise<CampaignRow | undefined> {
   return get<CampaignRow>(`SELECT * FROM campaigns WHERE id = $id`, { id });
 }
 
+/** Batch fetch — one query instead of N getCampaignById calls in a loop. */
+export function getCampaignsByIds(ids: string[]): Promise<CampaignRow[]> {
+  if (ids.length === 0) return Promise.resolve([]);
+  return all<CampaignRow>(`SELECT * FROM campaigns WHERE id = ANY($ids::text[])`, { ids });
+}
+
+/** Batch fetch of company display currencies — avoids N getCompanyById calls. */
+export function getCompanyCurrencies(ids: string[]): Promise<{ id: string; currency: Currency }[]> {
+  if (ids.length === 0) return Promise.resolve([]);
+  return all<{ id: string; currency: Currency }>(`SELECT id, currency FROM companies WHERE id = ANY($ids::text[])`, { ids });
+}
+
 export function listCampaignsByCompany(companyId: string): Promise<CampaignRow[]> {
   return all<CampaignRow>(`SELECT * FROM campaigns WHERE "companyId" = $companyId ORDER BY "createdAt" DESC`, { companyId });
 }
