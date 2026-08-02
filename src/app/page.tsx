@@ -495,8 +495,12 @@ export default function Landing() {
         </Reveal>
       </div>
 
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "24px 32px", textAlign: "center", color: "var(--text-dimmer)", fontSize: 13, borderTop: "1px solid var(--card-border)" }}>
-        AmplyGo — the performance marketing platform for creator content.
+      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "24px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", color: "var(--text-dimmer)", fontSize: 13, borderTop: "1px solid var(--card-border)" }}>
+        <span>AmplyGo — the performance marketing platform for creator content.</span>
+        <span style={{ display: "flex", gap: 18 }}>
+          <Link href="/privacy" className="nav-link" style={{ color: "var(--text-dim)" }}>Privacy</Link>
+          <Link href="/terms" className="nav-link" style={{ color: "var(--text-dim)" }}>Terms</Link>
+        </span>
       </div>
     </div>
   );
