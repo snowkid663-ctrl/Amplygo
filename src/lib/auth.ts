@@ -64,6 +64,26 @@ async function hydrateFromEmail(token: any, email?: string | null) {
   return token;
 }
 
+/**
+ * Resolves the profile image + display currency into the token ONCE (at sign-in
+ * and on session.update()), so the per-request `session` callback needs no DB
+ * query. Profile edits call update() to refresh these.
+ */
+async function attachProfile(token: any) {
+  token.image = null;
+  token.currency = "USD";
+  if (!token.id) return;
+  if (token.role === "COMPANY") {
+    const c = await getCompanyByUserId(token.id);
+    token.image = c?.logoUrl ?? null;
+    token.currency = c?.currency ?? "USD";
+  } else if (token.role === "CREATOR") {
+    const c = await getCreatorByUserId(token.id);
+    token.image = c?.avatarUrl ?? null;
+    token.currency = c?.displayCurrency ?? "USD";
+  }
+}
+
 export const authOptions: AuthOptions = {
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
@@ -79,38 +99,32 @@ export const authOptions: AuthOptions = {
         token.role = (user as any).role;
         token.suspended = (user as any).suspended;
         token.needsRole = false;
+        await attachProfile(token);
         return token;
       }
       // Google sign-in (first pass carries account + profile).
       if (account?.provider === "google") {
-        return hydrateFromEmail(token, (profile as any)?.email ?? token.email);
+        await hydrateFromEmail(token, (profile as any)?.email ?? token.email);
+        await attachProfile(token);
+        return token;
       }
-      // After onboarding creates the DB row, the client calls update() to refresh.
-      if (trigger === "update" && token.needsRole) {
-        return hydrateFromEmail(token, token.email);
+      // Client called update() — after onboarding, or a profile/currency edit.
+      if (trigger === "update") {
+        if (token.needsRole) await hydrateFromEmail(token, token.email);
+        await attachProfile(token);
+        return token;
       }
       return token;
     },
     async session({ session, token }) {
+      // No DB here — everything was resolved into the token at sign-in/update.
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as any;
         session.user.suspended = !!token.suspended;
         session.user.needsRole = !!token.needsRole;
-        // Resolve the profile image + currency fresh each request.
-        session.user.image = null;
-        session.user.currency = "USD";
-        if (token.id) {
-          if (token.role === "COMPANY") {
-            const c = await getCompanyByUserId(token.id);
-            session.user.image = c?.logoUrl ?? null;
-            session.user.currency = c?.currency ?? "USD";
-          } else if (token.role === "CREATOR") {
-            const c = await getCreatorByUserId(token.id);
-            session.user.image = c?.avatarUrl ?? null;
-            session.user.currency = c?.displayCurrency ?? "USD";
-          }
-        }
+        session.user.image = (token.image as string | null) ?? null;
+        session.user.currency = (token.currency as any) ?? "USD";
       }
       return session;
     },

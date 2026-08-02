@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
 import { Field, Input, Textarea, Select } from "./ui/Field";
 import { CURRENCIES, CURRENCY_LABEL } from "@/lib/money";
@@ -17,6 +18,7 @@ export default function CreatorProfileForm({
   displayCurrency: Currency;
 }) {
   const router = useRouter();
+  const { update } = useSession();
   const [form, setForm] = useState({ displayName, bio: bio ?? "", displayCurrency });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -45,6 +47,7 @@ export default function CreatorProfileForm({
       return;
     }
     setMsg({ type: "ok", text: "Profile saved." });
+    await update(); // refresh currency/name held in the session token
     router.refresh();
   }
 

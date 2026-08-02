@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
 import { Field, Input, Textarea, Select } from "./ui/Field";
 import { CURRENCIES, CURRENCY_LABEL } from "@/lib/money";
@@ -19,6 +20,7 @@ export default function CompanyProfileForm({
   currency: Currency;
 }) {
   const router = useRouter();
+  const { update } = useSession();
   const [form, setForm] = useState({
     companyName,
     website: website ?? "",
@@ -52,6 +54,7 @@ export default function CompanyProfileForm({
       return;
     }
     setMsg({ type: "ok", text: "Profile saved." });
+    await update(); // refresh currency/name held in the session token
     router.refresh();
   }
 
