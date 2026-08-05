@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export default function Modal({
   open,
@@ -15,6 +16,10 @@ export default function Modal({
   children: ReactNode;
   width?: number;
 }) {
+  // Portals must run on the client after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -29,9 +34,11 @@ export default function Modal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  // Rendered into <body> so the fixed overlay escapes any transformed /
+  // backdrop-filtered ancestor (glass cards), which would otherwise trap it.
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card glass-strong glass-hi" style={{ width }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
@@ -42,6 +49,7 @@ export default function Modal({
         </div>
         <div style={{ padding: "18px 20px 20px" }}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
