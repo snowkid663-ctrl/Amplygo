@@ -500,6 +500,7 @@ export default function Landing() {
         <span style={{ display: "flex", gap: 18 }}>
           <Link href="/privacy" className="nav-link" style={{ color: "var(--text-dim)" }}>Privacy</Link>
           <Link href="/terms" className="nav-link" style={{ color: "var(--text-dim)" }}>Terms</Link>
+          <Link href="/support" className="nav-link" style={{ color: "var(--text-dim)" }}>Support</Link>
         </span>
       </div>
     </div>

@@ -728,6 +728,9 @@ textarea.input { resize: vertical; }
   transition: transform .18s, box-shadow .18s;
 }
 .cp-video:hover { transform: translateY(-4px); box-shadow: 0 14px 34px oklch(0% 0 0 / 0.4); }
+.cp-video-thumb { background-size: cover; background-position: center; }
+.cp-video-thumb::before { content: ""; position: absolute; inset: 0; background: oklch(0% 0 0 / 0.28); }
+.cp-video-thumb .cp-video-play, .cp-video-thumb .cp-video-foot { position: relative; z-index: 1; }
 .cp-grad-1 { background: linear-gradient(160deg, oklch(55% 0.2 165), oklch(40% 0.16 200)); }
 .cp-grad-2 { background: linear-gradient(160deg, oklch(52% 0.2 330), oklch(42% 0.18 285)); }
 .cp-grad-3 { background: linear-gradient(160deg, oklch(58% 0.19 145), oklch(44% 0.15 175)); }

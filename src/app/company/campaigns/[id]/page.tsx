@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import {
@@ -142,7 +143,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
       ) : (
         submissions.map((s) => (
           <div key={s.id} className="table-grid table-row" style={{ gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr" }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>{nameOf(s.creatorId)}</div>
+            <Link href={`/creators/${s.creatorId}`} style={{ fontSize: 14, fontWeight: 500, color: "var(--accent-text)" }}>{nameOf(s.creatorId)}</Link>
             <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{formatDate(s.publishedAt)}</div>
             <div style={{ fontSize: 14 }}>
               {s.viewsCount != null ? formatNumber(s.viewsCount) : "—"}
@@ -180,7 +181,7 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
             const sub = submissionByParticipation.get(p.id);
             return (
               <div key={p.id} className="table-grid table-row" style={{ gridTemplateColumns: "1.6fr 1fr 1fr 1fr" }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{nameOf(p.creatorId)}</div>
+                <Link href={`/creators/${p.creatorId}`} style={{ fontSize: 14, fontWeight: 500, color: "var(--accent-text)" }}>{nameOf(p.creatorId)}</Link>
                 <div style={{ fontSize: 13, color: "var(--text-dim)" }}>{formatDate(p.joinedAt)}</div>
                 <div style={{ fontSize: 14 }}>{sub?.viewsCount != null ? formatNumber(sub.viewsCount) : "—"}</div>
                 <div>{sub ? <Badge tone={submissionStatusTone(sub.status)} small>{sub.status}</Badge> : <Badge tone="neutral" small>No submission</Badge>}</div>

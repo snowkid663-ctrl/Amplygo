@@ -172,6 +172,10 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS platforms text;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS "productMedia" text;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS attachments text;
 
+-- Creator profile: self-declared country + niche (fall back to inferred).
+ALTER TABLE creators ADD COLUMN IF NOT EXISTS country text;
+ALTER TABLE creators ADD COLUMN IF NOT EXISTS niche text;
+
 -- Real engagement tracking (Phase 1: YouTube). The platform video id + latest
 -- like/comment counts on the submission, plus a time-series of snapshots.
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS "externalVideoId" text;

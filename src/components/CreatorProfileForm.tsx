@@ -12,14 +12,18 @@ export default function CreatorProfileForm({
   displayName,
   bio,
   displayCurrency,
+  country,
+  niche,
 }: {
   displayName: string;
   bio: string | null;
   displayCurrency: Currency;
+  country: string | null;
+  niche: string | null;
 }) {
   const router = useRouter();
   const { update } = useSession();
-  const [form, setForm] = useState({ displayName, bio: bio ?? "", displayCurrency });
+  const [form, setForm] = useState({ displayName, bio: bio ?? "", displayCurrency, country: country ?? "", niche: niche ?? "" });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -64,6 +68,14 @@ export default function CreatorProfileForm({
           onChange={(e) => set("bio", e.target.value)}
         />
       </Field>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Field label="Country">
+          <Input value={form.country} onChange={(e) => set("country", e.target.value)} placeholder="Brazil" />
+        </Field>
+        <Field label="Niche">
+          <Input value={form.niche} onChange={(e) => set("niche", e.target.value)} placeholder="AI, Motion Design, SaaS" />
+        </Field>
+      </div>
       <Field label="Display currency">
         <Select value={form.displayCurrency} onChange={(e) => set("displayCurrency", e.target.value as Currency)}>
           {CURRENCIES.map((c) => (

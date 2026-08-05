@@ -134,10 +134,11 @@ export function getCreatorByUserId(userId: string): Promise<CreatorRow | undefin
 
 export function updateCreatorProfile(
   id: string,
-  input: { displayName: string; bio: string | null; displayCurrency: Currency }
+  input: { displayName: string; bio: string | null; displayCurrency: Currency; country: string | null; niche: string | null }
 ): Promise<void> {
   return run(
-    `UPDATE creators SET "displayName" = $displayName, bio = $bio, "displayCurrency" = $displayCurrency WHERE id = $id`,
+    `UPDATE creators SET "displayName" = $displayName, bio = $bio, "displayCurrency" = $displayCurrency,
+        country = $country, niche = $niche WHERE id = $id`,
     { id, ...input }
   );
 }
@@ -680,7 +681,7 @@ export interface CreatorProfileData {
   overview: { videos: number; views: number; revenueCents: number; campaigns: number };
   last30: { videos: number; views: number; revenueCents: number };
   brands: string[];
-  featured: { videoUrl: string; platform: Platform; views: number }[];
+  featured: { videoUrl: string; platform: Platform; views: number; externalVideoId: string | null }[];
   tags: string[];
   country: string | null;
   insights: string[];
@@ -690,7 +691,7 @@ export interface CreatorProfileData {
 export async function creatorProfile(creatorId: string, displayCurrency: Currency): Promise<CreatorProfileData> {
   const rows = await all<any>(
     `SELECT s.status, s."viewsCount" as views, s."creatorNetCents" as net, s.platform, s."videoUrl" as url,
-            s."publishedAt" as published, s."reviewedAt" as reviewed,
+            s."externalVideoId" as "externalVideoId", s."publishedAt" as published, s."reviewedAt" as reviewed,
             co.currency as cur, co."companyName" as company, c.category as category, c.country as country
        FROM submissions s
        JOIN campaigns c ON c.id = s."campaignId"
@@ -700,8 +701,9 @@ export async function creatorProfile(creatorId: string, displayCurrency: Currenc
     { creatorId }
   );
   const parts = await all<{ status: string }>(`SELECT status FROM participations WHERE "creatorId" = $creatorId`, { creatorId });
-  const joinedRow = await get<{ joined: string }>(
-    `SELECT u."createdAt" as joined FROM creators cr JOIN users u ON u.id = cr."userId" WHERE cr.id = $creatorId`,
+  const joinedRow = await get<{ joined: string; country: string | null; niche: string | null }>(
+    `SELECT u."createdAt" as joined, cr.country as country, cr.niche as niche
+       FROM creators cr JOIN users u ON u.id = cr."userId" WHERE cr.id = $creatorId`,
     { creatorId }
   );
 
@@ -724,7 +726,12 @@ export async function creatorProfile(creatorId: string, displayCurrency: Currenc
   const featured = approved
     .filter((r) => r.url)
     .slice(0, 6)
-    .map((r) => ({ videoUrl: r.url as string, platform: r.platform as Platform, views: num(r.views) }));
+    .map((r) => ({
+      videoUrl: r.url as string,
+      platform: r.platform as Platform,
+      views: num(r.views),
+      externalVideoId: (r.externalVideoId as string | null) ?? null,
+    }));
 
   const tally = (key: "category" | "country") => {
     const m = new Map<string, number>();
@@ -733,8 +740,10 @@ export async function creatorProfile(creatorId: string, displayCurrency: Currenc
     });
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   };
-  const tags = tally("category").slice(0, 3).map((e) => e[0]);
-  const country = tally("country")[0]?.[0] ?? null;
+  // Prefer the creator's self-declared niche/country; fall back to inferred.
+  const nicheTags = (joinedRow?.niche ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const tags = nicheTags.length ? nicheTags.slice(0, 3) : tally("category").slice(0, 3).map((e) => e[0]);
+  const country = joinedRow?.country || tally("country")[0]?.[0] || null;
 
   // Heuristic "AI" insights — reads like analysis, computed from real signals.
   const insights: string[] = [];

@@ -47,6 +47,8 @@ export interface CreatorRow {
   bannerUrl: string | null;
   bannerPos: number;
   displayCurrency: Currency;
+  country: string | null;
+  niche: string | null;
   createdAt: string;
 }
 

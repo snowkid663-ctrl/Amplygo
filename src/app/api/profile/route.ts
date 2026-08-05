@@ -66,6 +66,8 @@ export async function PATCH(req: Request) {
       displayName,
       bio: String(body.bio ?? "").trim() || null,
       displayCurrency: normalizeCurrency(body.displayCurrency, creator.displayCurrency),
+      country: String(body.country ?? "").trim() || null,
+      niche: String(body.niche ?? "").trim().slice(0, 120) || null,
     });
     // Keep the user's name in sync with the public display name.
     await updateUserName(user.id, displayName);

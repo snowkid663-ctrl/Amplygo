@@ -54,6 +54,8 @@ export default async function CreatorSettingsPage({
               displayName={creator.displayName}
               bio={creator.bio}
               displayCurrency={creator.displayCurrency}
+              country={creator.country}
+              niche={creator.niche}
             />
           </Card>
         </div>
