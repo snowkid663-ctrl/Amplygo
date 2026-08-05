@@ -7,7 +7,10 @@ import {
   getParticipation,
   getSubmissionByParticipation,
   listSocialAccounts,
+  getOrCreateTrackingLink,
 } from "@/lib/data";
+import { appBaseUrl } from "@/lib/urls";
+import CopyField from "@/components/CopyField";
 import { formatConverted } from "@/lib/money";
 import { PLATFORM_LABEL } from "@/lib/types";
 import PlatformIcon from "@/components/PlatformIcon";
@@ -30,6 +33,12 @@ export default async function CreatorCampaignDetail({ params }: { params: { id: 
   const budgetLeft = Math.max(0, campaign.budgetCents - campaign.spentCents);
   const cur = creator.displayCurrency;
   const companyCur = (await getCompanyById(campaign.companyId))?.currency ?? "USD";
+
+  // Per-creator tracking link (only meaningful once the company set a landing URL).
+  const trackingLink =
+    participation && campaign.landingUrl
+      ? `${appBaseUrl()}/r/${(await getOrCreateTrackingLink(campaign.id, creator.id)).code}`
+      : null;
 
   return (
     <CreatorNav title={campaign.name}>
@@ -93,6 +102,16 @@ export default async function CreatorCampaignDetail({ params }: { params: { id: 
             {campaign.endDate ? ` · Ends ${formatDate(campaign.endDate)}` : ""}
           </div>
         </Card>
+
+        {trackingLink && (
+          <Card style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Your tracking link</div>
+            <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
+              Put this link in your video description / bio. Sales it drives are credited to you and paid on top of views.
+            </div>
+            <CopyField value={trackingLink} />
+          </Card>
+        )}
 
         <CampaignJoinPanel
           campaignId={campaign.id}

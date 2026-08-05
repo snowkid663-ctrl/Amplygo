@@ -228,6 +228,7 @@ export interface NewCampaignInput {
   platforms?: string | null;
   productMedia?: string | null;
   attachments?: string | null;
+  landingUrl?: string | null;
 }
 
 export async function createCampaign(input: NewCampaignInput): Promise<CampaignRow> {
@@ -236,11 +237,11 @@ export async function createCampaign(input: NewCampaignInput): Promise<CampaignR
     `INSERT INTO campaigns
       (id, "companyId", name, description, brand, category, platform, platforms, language, country,
        "cpmCents", "budgetCents", "maxCreators", "endDate", "rulesChecklist", "rulesExtra",
-       "productMedia", attachments, status)
+       "productMedia", attachments, "landingUrl", status)
      VALUES
       ($id, $companyId, $name, $description, $brand, $category, $platform, $platforms, $language, $country,
        $cpmCents, $budgetCents, $maxCreators, $endDate, $rulesChecklist, $rulesExtra,
-       $productMedia, $attachments, $status)`,
+       $productMedia, $attachments, $landingUrl, $status)`,
     {
       id,
       ...input,
@@ -248,6 +249,7 @@ export async function createCampaign(input: NewCampaignInput): Promise<CampaignR
       platforms: input.platforms ?? null,
       productMedia: input.productMedia ?? null,
       attachments: input.attachments ?? null,
+      landingUrl: input.landingUrl ?? null,
     }
   );
   return (await getCampaignById(id))!;
@@ -673,6 +675,91 @@ export function videoStatsSeries(submissionId: string): Promise<{ views: number;
     `SELECT views, "capturedAt" FROM video_stats WHERE "submissionId" = $submissionId ORDER BY "capturedAt" ASC`,
     { submissionId }
   );
+}
+
+// ---------- Sales tracking (Phase 3) ----------
+
+export interface TrackingLinkRow {
+  id: string;
+  code: string;
+  campaignId: string;
+  creatorId: string;
+  clicks: number;
+  createdAt: string;
+}
+
+/** One tracking link per (campaign, creator); created on first use. */
+export async function getOrCreateTrackingLink(campaignId: string, creatorId: string): Promise<TrackingLinkRow> {
+  const existing = await get<TrackingLinkRow>(
+    `SELECT * FROM tracking_links WHERE "campaignId" = $campaignId AND "creatorId" = $creatorId`,
+    { campaignId, creatorId }
+  );
+  if (existing) return existing;
+  const id = newId();
+  const code = newToken().slice(0, 10);
+  await run(
+    `INSERT INTO tracking_links (id, code, "campaignId", "creatorId") VALUES ($id, $code, $campaignId, $creatorId)
+     ON CONFLICT ("campaignId", "creatorId") DO NOTHING`,
+    { id, code, campaignId, creatorId }
+  );
+  return (await get<TrackingLinkRow>(
+    `SELECT * FROM tracking_links WHERE "campaignId" = $campaignId AND "creatorId" = $creatorId`,
+    { campaignId, creatorId }
+  ))!;
+}
+
+export function getTrackingLinkByCode(code: string): Promise<TrackingLinkRow | undefined> {
+  return get<TrackingLinkRow>(`SELECT * FROM tracking_links WHERE code = $code`, { code });
+}
+
+export function incrementTrackingClicks(code: string): Promise<void> {
+  return run(`UPDATE tracking_links SET clicks = clicks + 1 WHERE code = $code`, { code });
+}
+
+export interface SaleRow {
+  id: string;
+  campaignId: string;
+  creatorId: string;
+  code: string | null;
+  amountCents: number;
+  currency: string;
+  externalId: string | null;
+  createdAt: string;
+}
+
+/** Records a verified sale. Idempotent by externalId (the Stripe session id). */
+export function recordSale(input: {
+  campaignId: string;
+  creatorId: string;
+  code: string | null;
+  amountCents: number;
+  currency: string;
+  externalId: string;
+}): Promise<void> {
+  return run(
+    `INSERT INTO sales (id, "campaignId", "creatorId", code, "amountCents", currency, "externalId")
+     VALUES ($id, $campaignId, $creatorId, $code, $amountCents, $currency, $externalId)
+     ON CONFLICT ("externalId") DO NOTHING`,
+    { id: newId(), ...input }
+  );
+}
+
+export function listSalesByCampaign(campaignId: string): Promise<SaleRow[]> {
+  return all<SaleRow>(`SELECT * FROM sales WHERE "campaignId" = $campaignId ORDER BY "createdAt" DESC`, { campaignId });
+}
+
+/** Real sales aggregates for a campaign, converted to a display currency. */
+export async function campaignSalesSummary(campaignId: string, displayCurrency: Currency) {
+  const sales = await listSalesByCampaign(campaignId);
+  const revenueCents = sales.reduce((a, s) => a + convertCents(s.amountCents, (s.currency as Currency) ?? "USD", displayCurrency), 0);
+  const byCreator = new Map<string, { count: number; revenueCents: number }>();
+  for (const s of sales) {
+    const cur = byCreator.get(s.creatorId) ?? { count: 0, revenueCents: 0 };
+    cur.count += 1;
+    cur.revenueCents += convertCents(s.amountCents, (s.currency as Currency) ?? "USD", displayCurrency);
+    byCreator.set(s.creatorId, cur);
+  }
+  return { count: sales.length, revenueCents, byCreator };
 }
 
 // ---------- Creator public profile (performance panel) ----------

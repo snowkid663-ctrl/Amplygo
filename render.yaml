@@ -47,3 +47,6 @@ services:
       # POST /api/cron/refresh-stats (see .github/workflows/refresh-stats.yml).
       - key: CRON_SECRET
         sync: false
+      # Stripe webhook signing secret for sale attribution (/api/webhooks/stripe).
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

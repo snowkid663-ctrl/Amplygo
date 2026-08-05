@@ -9,6 +9,7 @@ import {
   getCreatorById,
   countParticipants,
   listInvitesByCampaign,
+  campaignSalesSummary,
 } from "@/lib/data";
 import CampaignInviteManager from "@/components/CampaignInviteManager";
 import JoinRequestActions from "@/components/JoinRequestActions";
@@ -98,6 +99,12 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
   const m = campaignMetrics(campaign, submissions, nameOf, cur, participations.length);
   const money = (c: number) => formatCents(c, cur);
   const kNum = (n: number) => formatNumber(n);
+
+  // Real, Stripe-verified sales (Phase 3). Shown when tracking is set up.
+  const realSales = await campaignSalesSummary(campaign.id, cur);
+  const realByCreator = [...realSales.byCreator.entries()]
+    .map(([id, v]) => ({ name: nameOf(id), ...v }))
+    .sort((a, b) => b.revenueCents - a.revenueCents);
   const aov = convertCents(4900, "USD", cur);
 
   // Top performing videos (real submissions by views, demo revenue).
@@ -288,6 +295,40 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
             ))}
           </div>
         </Card>
+
+        {/* Verified sales (Stripe) — real Phase-3 data */}
+        <Panel
+          title="Verified sales"
+          right={<Badge tone={realSales.count > 0 ? "green" : "neutral"} small>{realSales.count > 0 ? "Stripe · live" : "Stripe"}</Badge>}
+        >
+          {realSales.count === 0 ? (
+            <div style={{ padding: "16px 20px", fontSize: 13, color: "var(--text-dim)" }}>
+              {campaign.landingUrl
+                ? "No tracked sales yet. Creators share their tracking link; sales come in through your Stripe webhook."
+                : "Set a product/landing URL on this campaign and connect your Stripe webhook to attribute real sales to each creator. (Business metrics below are demo until then.)"}
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 28, padding: "16px 20px", borderBottom: "1px solid var(--hairline)" }}>
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Verified revenue</div>
+                  <div className="tabular" style={{ fontSize: 22, fontWeight: 800 }}>{money(realSales.revenueCents)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Sales</div>
+                  <div className="tabular" style={{ fontSize: 22, fontWeight: 800 }}>{kNum(realSales.count)}</div>
+                </div>
+              </div>
+              {realByCreator.map((c, i) => (
+                <div key={c.name} className="table-grid table-row" style={{ gridTemplateColumns: "2fr 1fr 1fr", borderTop: i === 0 ? "none" : "1px solid var(--hairline)" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{c.name}</div>
+                  <div style={{ fontSize: 13 }}>{c.count} sale{c.count > 1 ? "s" : ""}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{money(c.revenueCents)}</div>
+                </div>
+              ))}
+            </>
+          )}
+        </Panel>
 
         {/* Business metrics */}
         <MetricSection title="Business">

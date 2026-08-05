@@ -84,6 +84,7 @@ export interface CampaignRow {
   platforms: string | null; // CSV of platforms (primary stays in `platform`)
   productMedia: string | null; // JSON: { url: string; type: "image" | "video" | "gif" }[]
   attachments: string | null; // JSON: { url: string; name: string }[]
+  landingUrl: string | null; // product/checkout URL that tracking links point to
   createdAt: string;
   updatedAt: string;
 }

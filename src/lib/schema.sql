@@ -176,6 +176,33 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS attachments text;
 ALTER TABLE creators ADD COLUMN IF NOT EXISTS country text;
 ALTER TABLE creators ADD COLUMN IF NOT EXISTS niche text;
 
+-- Sales tracking (Phase 3). The campaign's product/landing URL that tracking
+-- links redirect to; per-creator tracking links; and verified sales from Stripe.
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS "landingUrl" text;
+
+CREATE TABLE IF NOT EXISTS tracking_links (
+  id text PRIMARY KEY,
+  code text UNIQUE NOT NULL,
+  "campaignId" text NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  "creatorId" text NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  clicks integer NOT NULL DEFAULT 0,
+  "createdAt" text NOT NULL DEFAULT (now()::text),
+  UNIQUE ("campaignId", "creatorId")
+);
+
+CREATE TABLE IF NOT EXISTS sales (
+  id text PRIMARY KEY,
+  "campaignId" text NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  "creatorId" text NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  code text,
+  "amountCents" integer NOT NULL DEFAULT 0,
+  currency text NOT NULL DEFAULT 'USD',
+  "externalId" text UNIQUE, -- Stripe session id, for idempotency
+  "createdAt" text NOT NULL DEFAULT (now()::text)
+);
+CREATE INDEX IF NOT EXISTS idx_sales_campaign ON sales("campaignId");
+CREATE INDEX IF NOT EXISTS idx_sales_creator ON sales("creatorId");
+
 -- Real engagement tracking (Phase 1: YouTube). The platform video id + latest
 -- like/comment counts on the submission, plus a time-series of snapshots.
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS "externalVideoId" text;

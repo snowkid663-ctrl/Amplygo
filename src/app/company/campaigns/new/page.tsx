@@ -50,6 +50,7 @@ export default function NewCampaignPage() {
   const [budget, setBudget] = useState(1000);
   const [maxCreators, setMaxCreators] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [landingUrl, setLandingUrl] = useState("");
   const [rulesMode, setRulesMode] = useState<"list" | "write">("list");
   const [rules, setRules] = useState<string[]>(RULE_OPTIONS.slice(0, 2));
   const [rulesExtra, setRulesExtra] = useState("");
@@ -137,6 +138,7 @@ export default function NewCampaignPage() {
         rulesExtra,
         productMedia: media,
         attachments,
+        landingUrl: landingUrl.trim() || null,
         publish,
       }),
     });
@@ -241,6 +243,13 @@ export default function NewCampaignPage() {
             <div style={{ fontSize: 13, color: "oklch(85% 0.1 264)" }}>Estimated max views this budget can pay for</div>
             <div className="tabular" style={{ fontSize: 18, fontWeight: 700, color: "white" }}>{estimatedViews.toLocaleString("en-US")} views</div>
           </div>
+          <Field label="Product / landing URL (for sale tracking — optional)">
+            <Input value={landingUrl} onChange={(e) => setLandingUrl(e.target.value)} placeholder="https://yourproduct.com" />
+            <div style={{ fontSize: 12, color: "var(--text-dim)" }}>
+              Creators get a unique link that redirects here with a ref code. Pass it to Stripe as client_reference_id to
+              attribute sales.
+            </div>
+          </Field>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

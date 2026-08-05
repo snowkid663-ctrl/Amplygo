@@ -44,6 +44,7 @@ export async function POST(req: Request) {
     rulesExtra,
     productMedia,
     attachments,
+    landingUrl,
     publish,
   } = body as {
     name: string;
@@ -61,8 +62,11 @@ export async function POST(req: Request) {
     rulesExtra: string | null;
     productMedia: { url: string; type: string }[];
     attachments: { url: string; name: string }[];
+    landingUrl: string | null;
     publish: boolean;
   };
+
+  const cleanLandingUrl = typeof landingUrl === "string" && /^https?:\/\/\S+$/.test(landingUrl.trim()) ? landingUrl.trim() : null;
 
   const VALID_PLATFORMS: Platform[] = ["TIKTOK", "YOUTUBE_SHORTS", "INSTAGRAM_REELS"];
   const platformList = (Array.isArray(platforms) ? platforms : []).filter((p) => VALID_PLATFORMS.includes(p));
@@ -118,6 +122,7 @@ export async function POST(req: Request) {
     rulesExtra: rulesExtra?.trim() || null,
     productMedia: cleanMedia.length ? JSON.stringify(cleanMedia) : null,
     attachments: cleanAttachments.length ? JSON.stringify(cleanAttachments) : null,
+    landingUrl: cleanLandingUrl,
     status,
   });
 
