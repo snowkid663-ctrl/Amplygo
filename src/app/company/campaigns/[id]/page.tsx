@@ -398,7 +398,17 @@ export default async function CompanyCampaignDetail({ params }: { params: { id: 
         {/* Invite creators */}
         <Panel title="Invite creators">
           <div style={{ padding: 16 }}>
-            <CampaignInviteManager campaignId={campaign.id} invites={invites} />
+            <CampaignInviteManager
+              campaignId={campaign.id}
+              invites={invites}
+              preview={{
+                companyName: company.companyName,
+                brand: campaign.brand,
+                campaignName: campaign.name,
+                cpmLabel: money(campaign.cpmCents),
+                platform: campaign.platform,
+              }}
+            />
           </div>
         </Panel>
 
