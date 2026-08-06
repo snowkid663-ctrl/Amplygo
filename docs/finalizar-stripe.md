@@ -41,6 +41,35 @@ const session = await stripe.checkout.sessions.create({
 > É só isso de código. O `client_reference_id` é o campo oficial do Stripe pra
 > esse tipo de rastreio.
 
+### Funil com várias páginas / criação de conta (caso NovaVision)
+A URL da campanha é só a **entrada** — pode ser qualquer página. Não precisa
+cadastrar 2 URLs. O que importa é o `ref` **sobreviver** até o checkout, mesmo
+passando por landing → site → criar conta → planos → Stripe.
+
+Como o seu funil **exige criar conta antes de pagar**, o jeito mais robusto é
+**grudar o `ref` na conta** (melhor que só cookie — sobrevive a outro dispositivo
+e a cookie expirado):
+
+```
+landing (?ref)  → salva ref num cookie (.novavision.com, 30–90 dias)
+   → criar conta → grava user.amplygo_ref = ref  (no seu banco)
+   → escolher plano → checkout: client_reference_id = user.amplygo_ref
+```
+
+```js
+// no cadastro
+await db.users.update(userId, { amplygo_ref: readCookie("amplygo_ref") || null });
+
+// no checkout (lê da conta; cai pro cookie se faltar)
+const ref = user.amplygo_ref || readCookie("amplygo_ref") || undefined;
+const session = await stripe.checkout.sessions.create({ /* ... */, client_reference_id: ref });
+```
+
+> **Domínios diferentes?** Se a landing e o app estão em domínios distintos
+> (ex.: `novavision.com` vs `app.novavision.com`), use `Domain=.novavision.com`
+> no cookie pra valer nos subdomínios; se forem domínios totalmente diferentes,
+> passe o `ref` na URL ao pular de um site pro outro.
+
 ## Passo 3 — Criar o webhook no Stripe
 1. Stripe Dashboard → **Developers → Webhooks → Add endpoint**.
 2. Endpoint URL: `https://amplygo.com/api/webhooks/stripe`
